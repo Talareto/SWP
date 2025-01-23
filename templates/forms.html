@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News App-data</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }
+        .article { 
+            border: 1px solid #ddd; 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: #fff; 
+            border-radius: 5px; 
+        }
+        .article h2 { 
+            margin: 0; 
+            font-size: 1.5em; 
+        }
+        .article p { 
+            margin: 0.5em 0; 
+        }
+    </style>     
+</head>
+<body>
+<h1>News App</h1>
+<form method="POST" action="/search">
+    <input type="text" name="searchWord" placeholder="Give me the word that you are looking for!">
+    <button type="submit">Search</button>
+</form>
+
+<div id="results">
+    <!-- Search results will be inserted here -->
+    {% if articles %}
+        {% for article in articles %}
+            <div class="article">
+                <h2>{{ article.title }}</h2>
+                <p>{{ article.content }}</p>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>No results found.</p>
+    {% endif %}
+</div>
+
+</body>
+</html>
