@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News App</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            padding: 0; 
+            background-color: #f4f4f4; 
+        }
+        .article { 
+            border: 1px solid #ddd; 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: #fff; 
+            border-radius: 5px; 
+        }
+        .article h2 { 
+            margin: 0; 
+            font-size: 1.5em; 
+        }
+        .article p { 
+            margin: 0.5em 0; 
+        }
+    </style>
+      <script>
+        // Automatyczne odświeżanie strony co 10 sekund
+        setTimeout(() => {
+            window.location.reload();
+        }, 10000); 
+    </script>
+</head>
+<body>
+    <h1>News App</h1>
+    <form method="POST">       
+        <select name="category" onchange="this.form.submit()">            
+            <option value="technology" {% if selected_category == 'technology' %} selected {% endif %}>Technology</option>
+            <option value="tesla" {% if selected_category == 'tesla' %}selected{% endif %}>Tesla</option>
+            <option value="wallstreet" {% if selected_category == 'wallstreet' %}selected{% endif %}>Wall Street</option>
+        </select>
+    </form>
+
+    <div>
+        {% for article in articles %}
+            <div class="article">
+                <h2>{{ article.title }}</h2>
+                <p>{{ article.description }}</p>
+                <a href="{{ article.url }}" target="_blank">Read more</a>
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
