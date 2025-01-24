@@ -26,19 +26,16 @@
             margin: 0.5em 0; 
         }
     </style>
-      <script>
-        // Automatyczne odświeżanie strony co 10 sekund
-        setTimeout(() => {
-            window.location.reload();
-        }, 10000); 
-    </script>
+      
 </head>
 <body>
     <h1>News App</h1>
+    <button class="buttonForms" onclick="window.location.href='/forms'">Go to forms</button>
     <form method="POST">       
         <select name="category" onchange="this.form.submit()">            
             <option value="technology" {% if selected_category == 'technology' %} selected {% endif %}>Technology</option>
             <option value="tesla" {% if selected_category == 'tesla' %}selected{% endif %}>Tesla</option>
+            <option value="sport" {% if selected_category == 'sport' %}selected{% endif %}>Sport</option>
             <option value="wallstreet" {% if selected_category == 'wallstreet' %}selected{% endif %}>Wall Street</option>
         </select>
     </form>
