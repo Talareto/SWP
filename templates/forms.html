@@ -29,18 +29,22 @@
 </head>
 <body>
 <h1>News App</h1>
+<button class="back" onclick="window.location.href='/index'">Home Page</button>
+<button claa="parsePage" onclick="window.location.href='/parse'">WebScrap</button>
 <form method="POST" action="/search">
     <input type="text" name="searchWord" placeholder="Give me the word that you are looking for!">
     <button type="submit">Search</button>
 </form>
 
+<button name="back" onclick="window.location.href='/'">Back to main</button>
 <div id="results">
-    <!-- Search results will be inserted here -->
+    
     {% if articles %}
         {% for article in articles %}
             <div class="article">
                 <h2>{{ article.title }}</h2>
                 <p>{{ article.content }}</p>
+                <a href="{{ article.url }}" target="_blank">Read more</a>
             </div>
         {% endfor %}
     {% else %}
