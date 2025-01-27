@@ -279,12 +279,12 @@ def search_plus():
 @app.route('/bayes_classifier', methods=['GET', 'POST'])
 def bayes_classifier():
     if request.method == 'POST':
-        search_query = request.form['searchWord']  # Słowo kluczowe wprowadzone przez użytkownika
+        search_query = request.form['searchWord']  # Słowo kluczowe wpisane przez użytkownika
         
         # Pobieranie artykułów z bazy danych
         articles = Article.query.all()
 
-        # Sprawdzamy, czy model Bayesa jest już wytrenowany, jeśli nie, trenujemy
+        # Sprawdzenie, czy model Bayesa jest wytrenowany, jeśli nie, trenujemy
         if not hasattr(bayes_classifier, 'nb_classifier'):
             bayes_classifier.nb_classifier, bayes_classifier.tfidf_vectorizer, bayes_classifier.accuracy, bayes_classifier.classification_report = train_naive_bayes_classifier(articles)
         
@@ -301,27 +301,27 @@ def bayes_classifier():
 
         distances, indices = nn.kneighbors(query_vec)  # Szukamy najbliższych sąsiadów
 
-        # Zbieramy artykuły, które są najbardziej podobne do zapytania
+        # Przewidywanie kategorii dla każdego znalezionego artykułu
         similar_articles = []
         for idx in indices[0]:
+            article_text = articles[idx].title + " " + (articles[idx].description or "")
+            article_vec = tfidf_vectorizer.transform([article_text])
+            predicted_category = bayes_classifier.nb_classifier.predict(article_vec)[0]
+
             similar_articles.append({
                 'title': articles[idx].title,
                 'url': articles[idx].url,
-                'description': articles[idx].description
+                'description': articles[idx].description,
+                'category': predicted_category  # Dodajemy kategorię
             })
         
-        # Przewidywanie kategorii artykułów
-        predicted_category = bayes_classifier.nb_classifier.predict(query_vec)[0]
-        predicted_category_accuracy = bayes_classifier.accuracy
-        predicted_classification_report = bayes_classifier.classification_report
-
         return render_template('bayes_classifier.html', 
                                articles=similar_articles,
-                               predicted_category=predicted_category,
-                               accuracy=predicted_category_accuracy,
-                               classification_report=predicted_classification_report)
+                               accuracy=bayes_classifier.accuracy,
+                               classification_report=bayes_classifier.classification_report)
 
     return render_template('bayes_classifier.html', articles=[])
+
 
 
 if __name__ == '__main__':
