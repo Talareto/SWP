@@ -20,13 +20,16 @@
         <ul>
             {% for article in articles %}
                 <li>
-                    <a href="{{ article.url }}">{{ article.title }}</a>
+                    <a href="{{ article.url }}">{{ article.title }}</a>  
                     <p>{{ article.description }}</p>
+                    <p><strong>Kategoria:</strong> {{ article.category }}</p>  <!-- Dodana kategoria -->
                 </li>
             {% endfor %}
         </ul>
-
         
+        <h3>Dokładność modelu: {{ accuracy }}</h3>
+        <pre>{{ classification_report }}</pre>
     {% endif %}
 </body>
 </html>
+
