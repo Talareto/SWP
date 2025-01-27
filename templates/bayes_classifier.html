@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naive Bayes Classifier</title>
+</head>
+<body>
+    <button class="back" onclick="window.location.href='/index'">Home Page</button>
+    <h1>Naive Bayes Classifier</h1>
+    
+    <form action="/bayes_classifier" method="POST">
+        <label for="searchWord">Wprowadź zapytanie:</label>
+        <input type="text" id="searchWord" name="searchWord" required>
+        <button type="submit">Szukaj</button>
+    </form>
+    
+    {% if articles %}
+        <h2>Podobne artykuły:</h2>
+        <ul>
+            {% for article in articles %}
+                <li>
+                    <a href="{{ article.url }}">{{ article.title }}</a>
+                    <p>{{ article.description }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+
+        
+    {% endif %}
+</body>
+</html>
