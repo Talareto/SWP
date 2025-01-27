@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results</title>
+</head>
+<body>
+    <button class="wyszukiwarkaPlus" onclick="window.location.href='/searchPlus'">Search better</button>
+    <h1>Top 5 Articles based on TF-IDF</h1>
+
+    {% if articles %}
+        <ul>
+            {% for article in articles %}
+                <li>
+                    <a href="{{ article['url'] }}" target="_blank">{{ article['title'] }}</a><br>
+                    <em>Published on: {{ article['publishedAt'] }}</em><br>
+                    <p>{{ article['description'] }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No articles found for the given search query.</p>
+    {% endif %}
+</body>
+</html>
