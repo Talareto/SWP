@@ -3,54 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>News App-data</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            padding: 0; 
-            background-color: #f4f4f4; 
-        }
-        .article { 
-            border: 1px solid #ddd; 
-            margin: 10px 0; 
-            padding: 10px; 
-            background: #fff; 
-            border-radius: 5px; 
-        }
-        .article h2 { 
-            margin: 0; 
-            font-size: 1.5em; 
-        }
-        .article p { 
-            margin: 0.5em 0; 
-        }
-    </style>     
+    <title>Search Articles</title>
 </head>
 <body>
-<h1>News App</h1>
-<button class="back" onclick="window.location.href='/index'">Home Page</button>
-<button claa="parsePage" onclick="window.location.href='/parse'">WebScrap</button>
-<form method="POST" action="/search">
-    <input type="text" name="searchWord" placeholder="Give me the word that you are looking for!">
-    <button type="submit">Search</button>
-</form>
+    <h1>Search Articles</h1>
 
-<button name="back" onclick="window.location.href='/'">Back to main</button>
-<div id="results">
-    
-    {% if articles %}
-        {% for article in articles %}
-            <div class="article">
-                <h2>{{ article.title }}</h2>
-                <p>{{ article.content }}</p>
-                <a href="{{ article.url }}" target="_blank">Read more</a>
-            </div>
-        {% endfor %}
-    {% else %}
-        <p>No results found.</p>
+    <form method="POST" action="/forms">
+        <label for="searchWord">Enter search word:</label>
+        <input type="text" id="searchWord" name="searchWord" value="{{ search_query or '' }}" required>
+        <button type="submit">Search</button>
+    </form>
+
+    {% if suggested_word %}
+        <p>Did you mean: <strong>{{ suggested_word }}</strong>?</p>
     {% endif %}
-</div>
 
+    <h2>Top 10 Similar Articles</h2>
+    <ul>
+        {% for article in articles %}
+            <li>
+                <a href="{{ article.url }}">{{ article.title }}</a><br>
+                <p>{{ article.description }}</p>
+            </li>
+        {% endfor %}
+    </ul>
 </body>
 </html>
