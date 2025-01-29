@@ -1,31 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Articles</title>
+    <title>Wyszukiwanie Artykułów</title>
 </head>
 <body>
-    <h1>Search Articles</h1>
+    <h1>Wyszukaj artykuł</h1>
 
-    <form method="POST" action="/forms">
-        <label for="searchWord">Enter search word:</label>
-        <input type="text" id="searchWord" name="searchWord" value="{{ search_query or '' }}" required>
-        <button type="submit">Search</button>
+    <form action="{{ url_for('search') }}" method="POST">
+        <label for="searchWord">Wprowadź słowo kluczowe:</label>
+        <input type="text" id="searchWord" name="searchWord" required>
+        <button type="submit">Szukaj</button>
     </form>
 
-    {% if suggested_word %}
-        <p>Did you mean: <strong>{{ suggested_word }}</strong>?</p>
+    {% if articles %} 
+        <h2>Wyniki wyszukiwania:</h2>
+        <ul>
+            {% for article in articles %}
+                <li>
+                    <a href="{{ article.url }}">{{ article.title }}</a><br>
+                    <p>{{ article.description[:300] }}...</p>
+                    
+                    <td>{{ article.sentiment }}</td><br>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Brak wyników dla tego zapytania.</p>
     {% endif %}
-
-    <h2>Top 10 Similar Articles</h2>
-    <ul>
-        {% for article in articles %}
-            <li>
-                <a href="{{ article.url }}">{{ article.title }}</a><br>
-                <p>{{ article.description }}</p>
-            </li>
-        {% endfor %}
-    </ul>
 </body>
 </html>

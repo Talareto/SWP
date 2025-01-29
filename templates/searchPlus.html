@@ -7,7 +7,8 @@
 </head>
 <body>
     <h1>Wyszukaj artykuł</h1>
-    <button class = 'baysB' onclick="window.location.href='/bayes_classifier'">Bayes Classifier</button>
+    <button class="baysB" onclick="window.location.href='/bayes_classifier'">Bayes Classifier</button>
+
     <!-- Formularz do wprowadzenia zapytania -->
     <form action="/searchPlus" method="POST">
         <label for="searchWord">Wprowadź słowo kluczowe:</label>
@@ -22,13 +23,18 @@
                 <li>
                     <a href="{{ article.url }}">{{ article.title }}</a><br>
                     <p>{{ article.description[:300] }}...</p> <!-- Skrócona treść -->
+                    
+                    <!-- Sprawdzamy, czy artykuł ma przewidywaną kategorię -->
+                    {% if article.predicted_category %}
+                        <strong>Przewidywana kategoria:</strong> {{ article.predicted_category }}<br>
+                    {% else %}
+                        <strong>Przewidywana kategoria:</strong> Nieznana<br>
+                    {% endif %}
+                    
+                    <br>
                 </li>
             {% endfor %}
         </ul>
-
-        <!-- Wyświetlanie przewidywanej kategorii -->
-        <h3>Przewidywana kategoria:</h3>
-        <p>{{ predicted_category }}</p>  <!-- Zmienna przewidywanej kategorii -->
 
         <!-- Wyświetlanie dokładności modelu -->
         <h3>Dokładność modelu:</h3>
@@ -36,7 +42,10 @@
 
         <!-- Raport klasyfikacji -->
         <h3>Raport klasyfikacji:</h3>
-        <p>{{ classification_report }}</p>  <!-- Zmienna raportu -->
+        <pre>{{ classification_report }}</pre>  <!-- Zmienna raportu w formacie tekstowym -->
+
+    {% else %}
+        <p>Brak wyników dla tego zapytania.</p>
     {% endif %}
 </body>
 </html>
