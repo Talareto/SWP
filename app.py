@@ -219,31 +219,31 @@ def index():
         for article in all_articles
     ]
 
-    # **Łączenie artykułów**
+    
     combined_articles = processed_newsapi_articles + processed_db_articles
 
-    # **Konwersja daty na obiekt datetime**
+    
     for article in combined_articles:
         try:
             article["publishedAt"] = datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
             article["publishedAt"] = None  # Jeśli format jest błędny, przypisz None
 
-    # **Filtr języka**
+    
     if selected_language and selected_language != "all":
         combined_articles = [article for article in combined_articles if article['language'] == selected_language]
 
-    # **🔹 Poprawiony filtr sentymentu**
+    
     if selected_sentiment and selected_sentiment != "all":
         print(f"Filtrujemy po sentymencie: {selected_sentiment}")  # Testowanie
         combined_articles = [article for article in combined_articles if article['sentiment'].lower() == selected_sentiment]
 
-    # **Filtr daty**
+    
     if selected_date:
         selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d")
         combined_articles = [article for article in combined_articles if article["publishedAt"] and article["publishedAt"].date() >= selected_date_obj.date()]
 
-    # **Sortowanie według daty publikacji**
+    
     combined_articles.sort(key=lambda x: x["publishedAt"] if x["publishedAt"] else datetime.min, reverse=True)
 
     # **Testowanie, czy wartości są poprawnie przypisane**
