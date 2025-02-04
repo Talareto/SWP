@@ -11,8 +11,12 @@ from nltk.stem import WordNetLemmatizer
 from nltk.sentiment import SentimentIntensityAnalyzer
 from fuzzywuzzy import process
 from langdetect import detect, DetectorFactory
-
-
+from wordcloud import WordCloud
+import io
+import base64
+import matplotlib
+matplotlib.use('Agg')  
+import matplotlib.pyplot as plt
 
 
 nltk.download('wordnet')
@@ -145,12 +149,59 @@ def detect_language(text):
         return "Nie rozpoznano"
 
 
+
+
+def generate_wordcloud(text):
+    
+    wordcloud = WordCloud(
+        width=800, 
+        height=400, 
+        background_color="white", 
+        colormap="viridis"
+    ).generate(text)
+
+    # Zapisujemy chmurę słów do pamięci jako obrazek
+    img = io.BytesIO()
+    plt.figure(figsize=(10, 5))
+    plt.imshow(wordcloud, interpolation="bilinear")
+    plt.axis("off")
+    plt.tight_layout(pad=0)
+    plt.savefig(img, format='png')
+    plt.close()
+    img.seek(0)
+    return base64.b64encode(img.getvalue()).decode()
+
+
+
+
+
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     category = request.form.get('category', 'technology')
+
+    # Pobieranie nowych artykułów z API
     newsapi_articles = get_articles(category)
-    save_articles(newsapi_articles)
-    return render_template('index.html', articles=newsapi_articles, selected_category=category)
+    save_articles(newsapi_articles)  # Zapisujemy nowe artykuły do bazy danych
+
+    # Pobieranie wszystkich artykułów z bazy dla wybranej kategorii
+    all_articles = Article.query.filter(Article.title.ilike(f"%{category}%")).all()
+
+    # Łączenie artykułów z bazy i nowych, sortowanie po dacie
+    combined_articles = newsapi_articles + [
+        {
+            'title': article.title,
+            'description': article.description or 'No description available',
+            'url': article.url,
+            'publishedAt': article.published_at
+        }
+        for article in all_articles
+    ]
+
+    # Sortowanie według daty publikacji (najnowsze pierwsze)
+    combined_articles.sort(key=lambda x: x['publishedAt'], reverse=True)
+
+    return render_template('index.html', articles=combined_articles, selected_category=category)
 
 @app.route('/forms', methods=['GET'])
 def show_form():
@@ -160,7 +211,7 @@ def show_form():
 def search():
     search_query = request.form.get('searchWord', '').strip()
     if not search_query:
-        return render_template('forms.html', articles=[], detected_language="Nie wprowadzono tekstu")
+        return render_template('forms.html', articles=[], wordcloud_image=None)
 
     articles = Article.query.all()
     article_titles = [article.title.lower() for article in articles]
@@ -185,22 +236,24 @@ def search():
     similarity_scores.sort(key=lambda x: x[1], reverse=True)
     top_articles = []
 
+    # Przygotowujemy tekst do chmury słów
+    wordcloud_text = ""
+
     for idx, _ in similarity_scores[:5]:
         article = articles[idx]
-        # Rozpoznawanie języka dla title + description
-        full_text = article.title + " " + (article.description or "")
-        article_language = detect_language(full_text)
-
+        wordcloud_text += " " + article.title + " " + (article.description or "")
         top_articles.append({
             'title': article.title,
             'description': article.description or 'No description available',
             'url': article.url,
             'publishedAt': article.published_at,
-            'sentiment': analyze_sentiment(full_text),
-            'language': article_language  # Dodano język artykułu
+            'sentiment': analyze_sentiment(article.title + " " + (article.description or ""))
         })
 
-    return render_template('forms.html', articles=top_articles)
+    # Generujemy obrazek chmury słów
+    wordcloud_image = generate_wordcloud(wordcloud_text)
+
+    return render_template('forms.html', articles=top_articles, wordcloud_image=wordcloud_image)
 
 if __name__ == '__main__':
     app.run(debug=True)

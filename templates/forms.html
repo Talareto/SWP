@@ -1,31 +1,31 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wyszukiwanie Artykułów</title>
+    <title>Search Results</title>
 </head>
 <body>
-    <h1>Wyszukaj artykuł</h1>
+    <h1>Wyniki wyszukiwania</h1>
 
     <form action="{{ url_for('search') }}" method="POST">
-        <label for="searchWord">Wprowadź słowo kluczowe:</label>
-        <input type="text" id="searchWord" name="searchWord" required>
+        <input type="text" name="searchWord" placeholder="Wpisz zapytanie" required>
         <button type="submit">Szukaj</button>
     </form>
 
     {% if articles %}
-        <h2>Wyniki wyszukiwania:</h2>
+        <h2>Top Artykuły:</h2>
         <ul>
             {% for article in articles %}
                 <li>
-                    <a href="{{ article.url }}">{{ article.title }}</a><br>
-                    <p>{{ article.description[:300] }}...</p>
-                    <p><strong>Język artykułu:</strong> {{ article.language }}</p>
-                    <p><strong>Nastrój:</strong> {{ article.sentiment }}</p>
+                    <h3><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></h3>
+                    <p>{{ article.description }}</p>
                 </li>
             {% endfor %}
         </ul>
+
+        <h2>Chmura słów:</h2>
+        <img src="data:image/png;base64,{{ wordcloud_image }}" alt="Chmura słów">
     {% else %}
         <p>Brak wyników dla tego zapytania.</p>
     {% endif %}
