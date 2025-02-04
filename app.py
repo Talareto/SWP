@@ -18,6 +18,8 @@ import matplotlib
 matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 from datetime import datetime
+from sklearn.metrics import precision_score, recall_score, f1_score
+
 
 nltk.download('wordnet')
 nltk.download('vader_lexicon')
@@ -262,7 +264,7 @@ def search():
     articles = Article.query.all()
     article_titles = [article.title.lower() for article in articles]
 
-    # Poprawa literówek i lematyzacja
+    # 🔹 Poprawa literówek i lematyzacja
     search_query = correct_spelling(search_query.lower(), article_titles)
     search_query = lemmatize_text(search_query)
 
@@ -283,15 +285,31 @@ def search():
     similarity_scores.sort(key=lambda x: x[1], reverse=True)
     top_articles = []
 
-    # Przygotowujemy tekst do chmury słów
+    # 🔹 Przygotowujemy tekst do chmury słów
     wordcloud_text = ""
+
+    # 🔹 Obliczanie trafności wyników
+    relevant_articles = [article for article in articles if search_query in article.title.lower() or search_query in (article.description or "").lower()]
+    relevant_count = len(relevant_articles)  # Liczba rzeczywiście trafnych artykułów
+
+    retrieved_count = len(similarity_scores[:5])  # Liczba zwróconych wyników
+    retrieved_relevant_count = sum(1 for idx, _, _, _, _ in similarity_scores[:5] if articles[idx] in relevant_articles)  # Ile z nich jest trafnych?
+
+    # 🔹 Obliczamy Precision, Recall, F1-score
+    precision = retrieved_relevant_count / retrieved_count if retrieved_count > 0 else 0
+    recall = retrieved_relevant_count / relevant_count if relevant_count > 0 else 0
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+    # 🔹 Zapisujemy wyniki do tabeli
+    query_metrics = {
+        "Precision": round(precision, 3),
+        "Recall": round(recall, 3),
+        "F1-score": round(f1, 3)
+    }
 
     for idx, final_score, lev_score, jaccard_score, tfidf_score in similarity_scores[:5]:
         article = articles[idx]
         wordcloud_text += " " + article.title + " " + (article.description or "")
-
-        # Wykrywanie języka
-        article_language = detect_language(article.title + " " + (article.description or ""))
 
         top_articles.append({
             'title': article.title,
@@ -303,14 +321,13 @@ def search():
             'jaccard': round(jaccard_score, 3),
             'tfidf': round(tfidf_score, 3),
             'final_score': round(final_score, 3),
-            'language': article_language  
+            'language': detect_language(article.title + " " + (article.description or ""))  
         })
 
-    # Generujemy obrazek chmury słów
+    # 🔹 Generujemy chmurę słów
     wordcloud_image = generate_wordcloud(wordcloud_text)
 
-    return render_template('forms.html', articles=top_articles, wordcloud_image=wordcloud_image, query_metrics=search_query)
-
+    return render_template('forms.html', articles=top_articles, wordcloud_image=wordcloud_image, query_metrics=query_metrics)
 
 
 

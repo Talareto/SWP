@@ -60,7 +60,22 @@
                 {% endfor %}
             </tbody>
         </table>
-
+        {% if query_metrics %}
+        <h2>Jakość wyszukiwania:</h2>
+        <table border="1">
+            <tr>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>F1-score</th>
+            </tr>
+            <tr>
+                <td>{{ query_metrics.Precision }}</td>
+                <td>{{ query_metrics.Recall }}</td>
+                <td>{{ query_metrics['F1-score'] }}</td>
+            </tr>
+        </table>
+    {% endif %}
+    
         <h2>Chmura słów:</h2>
         <img src="data:image/png;base64,{{ wordcloud_image }}" alt="Chmura słów">
     {% else %}
