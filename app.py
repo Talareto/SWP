@@ -317,7 +317,7 @@ def search():
         "F1-score": round(f1, 3)
     }
 
-    for idx, final_score, lev_score, jaccard_score, tfidf_score in similarity_scores[:5]:
+    for idx, final_score, lev_score, jaccard_score, tfidf_score in similarity_scores[:15]:
         article = articles[idx]
         wordcloud_text += " " + article.title + " " + (article.description or "")
 
