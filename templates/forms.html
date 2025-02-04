@@ -14,15 +14,15 @@
         <button type="submit">Szukaj</button>
     </form>
 
-    {% if articles %} 
+    {% if articles %}
         <h2>Wyniki wyszukiwania:</h2>
         <ul>
             {% for article in articles %}
                 <li>
                     <a href="{{ article.url }}">{{ article.title }}</a><br>
                     <p>{{ article.description[:300] }}...</p>
-                    
-                    <td>{{ article.sentiment }}</td><br>
+                    <p><strong>Język artykułu:</strong> {{ article.language }}</p>
+                    <p><strong>Nastrój:</strong> {{ article.sentiment }}</p>
                 </li>
             {% endfor %}
         </ul>

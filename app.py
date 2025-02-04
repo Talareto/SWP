@@ -6,11 +6,11 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 import Levenshtein
 from nltk.util import ngrams
-import difflib
 import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.sentiment import SentimentIntensityAnalyzer
 from fuzzywuzzy import process
+from langdetect import detect, DetectorFactory
 
 
 
@@ -51,7 +51,7 @@ def get_articles(category):
 
 
 def get_openalex_articles(query):
-    url = f'https://api.openalex.org/works?filter=title.search:{query}&per-page=10' #api jest do zmiany bo szuka po tytułach
+    url = f'https://api.openalex.org/works?filter=title.search:{query}&per-page=10' 
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json().get('results', [])
@@ -134,7 +134,15 @@ def analyze_sentiment(text):
         return "Negatywny"
     else:
         return "Neutralny"
+    
 
+    DetectorFactory.seed = 0 
+def detect_language(text):
+    try:
+        language = detect(text)
+        return language
+    except:
+        return "Nie rozpoznano"
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -152,12 +160,12 @@ def show_form():
 def search():
     search_query = request.form.get('searchWord', '').strip()
     if not search_query:
-        return render_template('forms.html', articles=[])
+        return render_template('forms.html', articles=[], detected_language="Nie wprowadzono tekstu")
 
     articles = Article.query.all()
     article_titles = [article.title.lower() for article in articles]
 
-    # 🔹 Poprawa literówek i lematyzacja
+    # Poprawa literówek i lematyzacja
     search_query = correct_spelling(search_query.lower(), article_titles)
     search_query = lemmatize_text(search_query)
 
@@ -175,14 +183,23 @@ def search():
         similarity_scores.append((idx, final_score))
 
     similarity_scores.sort(key=lambda x: x[1], reverse=True)
-    top_articles = [{
-        'title': articles[idx].title,
-        'description': articles[idx].description or 'No description available',
-        'url': articles[idx].url,
-        'publishedAt': articles[idx].published_at,
-        'sentiment': analyze_sentiment(articles[idx].title + " " + (articles[idx].description or ""))
-    } for idx, _ in similarity_scores[:5]]
-    
+    top_articles = []
+
+    for idx, _ in similarity_scores[:5]:
+        article = articles[idx]
+        # Rozpoznawanie języka dla title + description
+        full_text = article.title + " " + (article.description or "")
+        article_language = detect_language(full_text)
+
+        top_articles.append({
+            'title': article.title,
+            'description': article.description or 'No description available',
+            'url': article.url,
+            'publishedAt': article.published_at,
+            'sentiment': analyze_sentiment(full_text),
+            'language': article_language  # Dodano język artykułu
+        })
+
     return render_template('forms.html', articles=top_articles)
 
 if __name__ == '__main__':
