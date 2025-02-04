@@ -197,8 +197,8 @@ def index():
             'description': article.get('description', 'No description available'),
             'url': article.get('url', '#'),
             'publishedAt': article.get('publishedAt', 'N/A'),
-            'language': detect_language(article.get('title', '') + " " + article.get('description', '')),
-            'sentiment': analyze_sentiment(article.get('title', '') + " " + article.get('description', ''))
+            'language': detect_language((article.get('title') or '') + " " + (article.get('description') or '')),
+            'sentiment': analyze_sentiment((article.get('title') or '') + " " + (article.get('description') or ''))
         }
         for article in newsapi_articles
     ]
