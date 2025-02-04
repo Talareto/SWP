@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,24 @@
             margin: 20px; 
             padding: 0; 
             background-color: #f4f4f4; 
+        }
+        .filter-container {
+            margin-bottom: 15px;
+        }
+        select, button {
+            margin: 5px;
+            padding: 8px;
+            font-size: 1em;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
         }
         .article { 
             border: 1px solid #ddd; 
@@ -33,36 +51,14 @@
         .article a:hover { 
             text-decoration: underline; 
         }
-        .article small { 
-            display: block; 
-            margin-top: 5px; 
-            color: #999; 
-            font-size: 0.9em; 
-        }
-        select, button {
-            margin: 10px 0;
-            padding: 5px 10px;
-            font-size: 1em;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-        button {
-            background-color: #007BFF;
-            color: white;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
     </style>
 </head>
 <body>
     <h1>News App</h1>
-    <button class="goForms" onclick="window.location.href='/forms'">Forms</button>
-    
-    <!-- Form wyboru kategorii -->
-    <form method="POST">       
-        <select name="category" onchange="this.form.submit()">            
+
+    <form method="POST">
+        <label for="category">Wybierz kategorię:</label>
+        <select name="category" onchange="this.form.submit()">
             <option value="technology" {% if selected_category == 'technology' %} selected {% endif %}>Technology</option>
             <option value="tesla" {% if selected_category == 'tesla' %}selected{% endif %}>Tesla</option>
             <option value="wallstreet" {% if selected_category == 'wallstreet' %}selected{% endif %}>Wall Street</option>
@@ -70,22 +66,43 @@
             <option value="health" {% if selected_category == 'health' %}selected{% endif %}>Health</option>
             <option value="entertainment" {% if selected_category == 'entertainment' %}selected{% endif %}>Entertainment</option>
         </select>
+
+        <div class="filter-container">
+            <label for="language">Filtruj po języku:</label>
+            <select name="language">
+                <option value="all">Wszystkie</option>
+                <option value="en">Angielski</option>
+                <option value="pl">Polski</option>
+                <option value="fr">Francuski</option>
+                <option value="de">Niemiecki</option>
+            </select>
+
+            <label for="sentiment">Filtruj po sentymencie:</label>
+            <select name="sentiment">
+                <option value="all">Wszystkie</option>
+                <option value="positive">Pozytywny</option>
+                <option value="neutral">Neutralny</option>
+                <option value="negative">Negatywny</option>
+            </select>
+
+            <label for="date">Filtruj po dacie:</label>
+            <input type="date" name="date">
+        </div>
+
+        <button type="submit">Filtruj</button>
     </form>
 
-    <!-- Lista artykułów -->
     <div>
-        {% if articles %}
-            {% for article in articles %}
-                <div class="article">
-                    <h2>{{ article.title }}</h2>
-                    <p>{{ article.description }}</p>
-                    <a href="{{ article.url }}" target="_blank">Read more</a>
-                    <small>Published at: {{ article.publishedAt }}</small>
-                </div>
-            {% endfor %}
-        {% else %}
-            <p>No articles available for this category.</p>
-        {% endif %}
+        {% for article in articles %}
+            <div class="article">
+                <h2>{{ article.title }}</h2>
+                <p>{{ article.description }}</p>
+                <p><strong>Język:</strong> {{ article.language if article.language else "Nieznany" }}</p>
+                <p><strong>Sentiment:</strong> {{ article.sentiment if article.sentiment else "Nieznany" }}</p>
+                <p><strong>Data publikacji:</strong> {{ article.publishedAt }}</p>
+                <a href="{{ article.url }}" target="_blank">Read more</a>
+            </div>
+        {% endfor %}
     </div>
 </body>
 </html>

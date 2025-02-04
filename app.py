@@ -17,7 +17,7 @@ import base64
 import matplotlib
 matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
-
+from datetime import datetime
 
 nltk.download('wordnet')
 nltk.download('vader_lexicon')
@@ -126,18 +126,18 @@ def jaccard_similarity(str1, str2, k=3):
     return len(set1 & set2) / len(set1 | set2)
 
 
-
+sia = SentimentIntensityAnalyzer()
 def analyze_sentiment(text):  
-    sia = SentimentIntensityAnalyzer()
+    
     sentiment_score = sia.polarity_scores(text)['compound']
 
     # Klasyfikacja
     if sentiment_score > 0.2:
-        return "Pozytywny"
+        return "pozytywny"  # 🔹 Upewniamy się, że wartość jest w małych literach
     elif sentiment_score < -0.2:
-        return "Negatywny"
+        return "negatywny"
     else:
-        return "Neutralny"
+        return "neutralny"
     
 
     DetectorFactory.seed = 0 
@@ -176,32 +176,88 @@ def generate_wordcloud(text):
 
 
 
+
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     category = request.form.get('category', 'technology')
+    selected_language = request.form.get('language', 'all')
+    selected_sentiment = request.form.get('sentiment', 'all').lower().strip()  # 🔹 Upewniamy się, że jest poprawny format
+    selected_date = request.form.get('date', '')
 
-    # Pobieranie nowych artykułów z API
+    # Pobieranie artykułów z API
     newsapi_articles = get_articles(category)
-    save_articles(newsapi_articles)  # Zapisujemy nowe artykuły do bazy danych
+    
+    # **Analiza języka i sentymentu dla artykułów z API**
+    processed_newsapi_articles = [
+        {
+            'title': article.get('title', 'No title'),
+            'description': article.get('description', 'No description available'),
+            'url': article.get('url', '#'),
+            'publishedAt': article.get('publishedAt', 'N/A'),
+            'language': detect_language(article.get('title', '') + " " + article.get('description', '')),
+            'sentiment': analyze_sentiment(article.get('title', '') + " " + article.get('description', ''))
+        }
+        for article in newsapi_articles
+    ]
 
-    # Pobieranie wszystkich artykułów z bazy dla wybranej kategorii
+    save_articles(newsapi_articles)  # Zapisujemy artykuły do bazy (bez języka i sentymentu)
+
+    # Pobieranie artykułów z bazy
     all_articles = Article.query.filter(Article.title.ilike(f"%{category}%")).all()
 
-    # Łączenie artykułów z bazy i nowych, sortowanie po dacie
-    combined_articles = newsapi_articles + [
+    # **Dynamiczna analiza języka i sentymentu dla artykułów z bazy**
+    processed_db_articles = [
         {
             'title': article.title,
             'description': article.description or 'No description available',
             'url': article.url,
-            'publishedAt': article.published_at
+            'publishedAt': article.published_at,
+            'language': detect_language(article.title + " " + (article.description or "")),
+            'sentiment': analyze_sentiment(article.title + " " + (article.description or ""))
         }
         for article in all_articles
     ]
 
-    # Sortowanie według daty publikacji (najnowsze pierwsze)
-    combined_articles.sort(key=lambda x: x['publishedAt'], reverse=True)
+    # **Łączenie artykułów**
+    combined_articles = processed_newsapi_articles + processed_db_articles
+
+    # **Konwersja daty na obiekt datetime**
+    for article in combined_articles:
+        try:
+            article["publishedAt"] = datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            article["publishedAt"] = None  # Jeśli format jest błędny, przypisz None
+
+    # **Filtr języka**
+    if selected_language and selected_language != "all":
+        combined_articles = [article for article in combined_articles if article['language'] == selected_language]
+
+    # **🔹 Poprawiony filtr sentymentu**
+    if selected_sentiment and selected_sentiment != "all":
+        print(f"Filtrujemy po sentymencie: {selected_sentiment}")  # Testowanie
+        combined_articles = [article for article in combined_articles if article['sentiment'].lower() == selected_sentiment]
+
+    # **Filtr daty**
+    if selected_date:
+        selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d")
+        combined_articles = [article for article in combined_articles if article["publishedAt"] and article["publishedAt"].date() >= selected_date_obj.date()]
+
+    # **Sortowanie według daty publikacji**
+    combined_articles.sort(key=lambda x: x["publishedAt"] if x["publishedAt"] else datetime.min, reverse=True)
+
+    # **Testowanie, czy wartości są poprawnie przypisane**
+    for article in combined_articles[:5]:  # Sprawdź pierwsze 5 artykułów
+        print(f"Tytuł: {article['title']}")
+        print(f"Język: {article['language']}")
+        print(f"Sentiment: {article['sentiment']}")
+        print(f"Data publikacji: {article['publishedAt']}")
+        print("-" * 40)
 
     return render_template('index.html', articles=combined_articles, selected_category=category)
+
+
+
 
 @app.route('/forms', methods=['GET'])
 def show_form():
@@ -211,7 +267,7 @@ def show_form():
 def search():
     search_query = request.form.get('searchWord', '').strip()
     if not search_query:
-        return render_template('forms.html', articles=[], wordcloud_image=None)
+        return render_template('forms.html', articles=[], wordcloud_image=None, query_metrics=None)
 
     articles = Article.query.all()
     article_titles = [article.title.lower() for article in articles]
@@ -231,7 +287,8 @@ def search():
         jaccard_score = jaccard_similarity(search_query, documents[idx])
         tfidf_score = query_vec.dot(X[idx].T).toarray()[0][0]
         final_score = (0.5 * tfidf_score) + (0.3 * lev_score) + (0.2 * jaccard_score)
-        similarity_scores.append((idx, final_score))
+
+        similarity_scores.append((idx, final_score, lev_score, jaccard_score, tfidf_score))
 
     similarity_scores.sort(key=lambda x: x[1], reverse=True)
     top_articles = []
@@ -239,21 +296,32 @@ def search():
     # Przygotowujemy tekst do chmury słów
     wordcloud_text = ""
 
-    for idx, _ in similarity_scores[:5]:
+    for idx, final_score, lev_score, jaccard_score, tfidf_score in similarity_scores[:5]:
         article = articles[idx]
         wordcloud_text += " " + article.title + " " + (article.description or "")
+
+        # Wykrywanie języka
+        article_language = detect_language(article.title + " " + (article.description or ""))
+
         top_articles.append({
             'title': article.title,
             'description': article.description or 'No description available',
             'url': article.url,
             'publishedAt': article.published_at,
-            'sentiment': analyze_sentiment(article.title + " " + (article.description or ""))
+            'sentiment': analyze_sentiment(article.title + " " + (article.description or "")),
+            'levenshtein': round(lev_score, 3),
+            'jaccard': round(jaccard_score, 3),
+            'tfidf': round(tfidf_score, 3),
+            'final_score': round(final_score, 3),
+            'language': article_language  
         })
 
     # Generujemy obrazek chmury słów
     wordcloud_image = generate_wordcloud(wordcloud_text)
 
-    return render_template('forms.html', articles=top_articles, wordcloud_image=wordcloud_image)
+    return render_template('forms.html', articles=top_articles, wordcloud_image=wordcloud_image, query_metrics=search_query)
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
