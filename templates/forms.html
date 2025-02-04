@@ -1,31 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Articles</title>
+    <title>Wyniki wyszukiwania</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
 </head>
 <body>
-    <h1>Search Articles</h1>
+    <h1>Wyniki wyszukiwania</h1>
 
-    <form method="POST" action="/forms">
-        <label for="searchWord">Enter search word:</label>
-        <input type="text" id="searchWord" name="searchWord" value="{{ search_query or '' }}" required>
-        <button type="submit">Search</button>
+    <form action="{{ url_for('search') }}" method="POST">
+        <input type="text" name="searchWord" placeholder="Wpisz zapytanie" required>
+        <button type="submit">Szukaj</button>
     </form>
 
-    {% if suggested_word %}
-        <p>Did you mean: <strong>{{ suggested_word }}</strong>?</p>
-    {% endif %}
+    {% if articles %}
+        <h2>Top Artykuły:</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tytuł</th>
+                    <th>Opis</th>
+                    <th>Data publikacji</th>
+                    <th>Język</th>
+                    <th>Levenshtein</th>
+                    <th>Jaccard</th>
+                    <th>TF-IDF</th>
+                    <th>Końcowy wynik</th>
+                    <th>Sentiment</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in articles %}
+                    <tr>
+                        <td><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></td>
+                        <td>{{ article.description[:100] }}...</td>
+                        <td>{{ article.publishedAt }}</td>
+                        <td>{{ article.language }}</td>
+                        <td>{{ article.levenshtein }}</td>
+                        <td>{{ article.jaccard }}</td>
+                        <td>{{ article.tfidf }}</td>
+                        <td>{{ article.final_score }}</td>
+                        <td>{{ article.sentiment }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
-    <h2>Top 10 Similar Articles</h2>
-    <ul>
-        {% for article in articles %}
-            <li>
-                <a href="{{ article.url }}">{{ article.title }}</a><br>
-                <p>{{ article.description }}</p>
-            </li>
-        {% endfor %}
-    </ul>
+        <h2>Chmura słów:</h2>
+        <img src="data:image/png;base64,{{ wordcloud_image }}" alt="Chmura słów">
+    {% else %}
+        <p>Brak wyników dla tego zapytania.</p>
+    {% endif %}
 </body>
 </html>

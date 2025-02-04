@@ -1,26 +1,85 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Results</title>
+    <title>Wyniki wyszukiwania</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 20px;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        .article {
+            border-bottom: 1px solid #ddd;
+            padding: 15px 0;
+        }
+        .article h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+        .article p {
+            margin: 5px 0;
+            color: #555;
+        }
+        .article a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .article a:hover {
+            text-decoration: underline;
+        }
+        .back-button {
+            display: block;
+            width: 150px;
+            margin: 20px auto;
+            padding: 10px;
+            text-align: center;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-button:hover {
+            background: #0056b3;
+        }
+    </style>
 </head>
 <body>
-    <button class="wyszukiwarkaPlus" onclick="window.location.href='/searchPlus'">Search better</button>
-    <h1>Top 5 Articles based on TF-IDF</h1>
+
+<div class="container">
+    <h1>Wyniki wyszukiwania</h1>
 
     {% if articles %}
+        <h2>Znalezione artykuły:</h2>
         <ul>
             {% for article in articles %}
-                <li>
-                    <a href="{{ article['url'] }}" target="_blank">{{ article['title'] }}</a><br>
-                    <em>Published on: {{ article['publishedAt'] }}</em><br>
-                    <p>{{ article['description'] }}</p>
+                <li class="article">
+                    <h2><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></h2>
+                    <p>{{ article.description[:300] }}...</p> <!-- Skrócona treść -->
+                    <p><strong>Data publikacji:</strong> {{ article.publishedAt }}</p>
                 </li>
             {% endfor %}
         </ul>
     {% else %}
-        <p>No articles found for the given search query.</p>
+        <p>Brak wyników dla tego zapytania.</p>
     {% endif %}
+    
+    <a href="/index" class="back-button">Powrót do strony głównej</a>
+</div>
+
 </body>
 </html>

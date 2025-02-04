@@ -1,27 +1,40 @@
 from flask import Flask, render_template, request
 import requests
 from flask_sqlalchemy import SQLAlchemy
-from collections import defaultdict, Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.neighbors import NearestNeighbors
-import math
-import re
-from sklearn.naive_bayes import MultinomialNB
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report 
+import Levenshtein
+from nltk.util import ngrams
+import nltk
+from nltk.stem import WordNetLemmatizer
+from nltk.sentiment import SentimentIntensityAnalyzer
+from fuzzywuzzy import process
+from langdetect import detect, DetectorFactory
+from wordcloud import WordCloud
+import io
+import base64
+import matplotlib
+matplotlib.use('Agg')  
+import matplotlib.pyplot as plt
+from datetime import datetime
 
-
+nltk.download('wordnet')
+nltk.download('vader_lexicon')
 app = Flask(__name__)
-
-
 API_KEY = '3434439a803240cdae66cf6ba24812f9'
 
-# Konfiguracja bazy danych SQLite
+
+
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///articles.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# Model artykułu
+
+
+
+
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
@@ -29,40 +42,20 @@ class Article(db.Model):
     url = db.Column(db.String(300), nullable=False, unique=True)
     published_at = db.Column(db.String(100), nullable=False)
 
-
-# Tworzenie bazy danych
 with app.app_context():
     db.create_all()
 
-# Funkcja do pobierania artykułów z NewsAPI
+
+
 def get_articles(category):
-    if category == 'technology':
-        url = f'https://newsapi.org/v2/everything?q=technology&from=2024-12-27&sortBy=publishedAt&apiKey={API_KEY}'
-    elif category == 'tesla':
-        url = f'https://newsapi.org/v2/everything?q=tesla&from=2024-12-27&sortBy=publishedAt&apiKey={API_KEY}'
-    elif category == 'wallstreet':
-        url = f'https://newsapi.org/v2/everything?domains=wsj.com&apiKey={API_KEY}'
-    elif category == 'sport':
-         url = f'https://newsapi.org/v2/everything?q=sport&from=2024-12-27&sortBy=publishedAt&apiKey={API_KEY}'
-    elif category == 'health':
-         url = f'https://newsapi.org/v2/everything?q=health&from=2024-12-27&sortBy=publishedAt&apiKey={API_KEY}'
-    elif category == 'science':
-         url = f'https://newsapi.org/v2/everything?q=science&from=2024-12-27&sortBy=publishedAt&apiKey={API_KEY}'  
-    elif category == 'entertainment':
-         url = f'https://newsapi.org/v2/everything?q=entertainment&from=2024-12-27&sortBy=publishedAt&apiKey={API_KEY}'   
-    else:
-        return []
-
+    url = f'https://newsapi.org/v2/everything?q={category}&sortBy=publishedAt&apiKey={API_KEY}'
     response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        return data.get('articles', [])
-    else:
-        return []
+    return response.json().get('articles', []) if response.status_code == 200 else []
 
-# Funkcja do pobierania artykułów z OpenAlex API
+
+
 def get_openalex_articles(query):
-    url = f'https://api.openalex.org/works?filter=title.search:{query}&per-page=10'
+    url = f'https://api.openalex.org/works?filter=title.search:{query}&per-page=10' 
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json().get('results', [])
@@ -77,11 +70,11 @@ def get_openalex_articles(query):
         return articles
     return []
 
-# Funkcja do zapisywania artykułów w bazie danych
+
+
 def save_articles(articles):
     for article in articles:
         if not article.get('title'):
-            print(f"Pomijam artykuł bez tytułu: {article}")
             continue
         existing_article = Article.query.filter_by(url=article['url']).first()
         if not existing_article:
@@ -96,231 +89,238 @@ def save_articles(articles):
 
 
 
-
-
-# Funkcja do wczytywania lematów z pliku
-def wczytaj_lemy(nazwa_pliku):
-    mapa_lemmatyzacji = {}
-    with open(nazwa_pliku, 'r') as plik:
-        for linia in plik:
-            oryginalny, lema = linia.strip().split()
-            mapa_lemmatyzacji[oryginalny] = lema
-    return mapa_lemmatyzacji
-
-# Funkcja do lematyzacji tokenów z użyciem pliku lematyzacji
-def lematyzuj_tokeny(tokeny, lemy):
-    return [lemy.get(token, token) for token in tokeny]
-
-# Funkcja obliczająca TF-IDF
-def podziel_na_tokeny(tekst):
-    return re.findall(r'\b\w+\b', tekst.lower())
-
-def oblicz_czestotliwosc_tokenow(tokeny):
-    licznik_tokenow = Counter(tokeny)
-    suma_tokenow = len(tokeny)
-    return {slowo: count / suma_tokenow for slowo, count in licznik_tokenow.items()}
-
-def oblicz_idf(wszystkie_dokumenty):
-    liczba_dok = len(wszystkie_dokumenty)
-    wystapienia_termow = defaultdict(lambda: 0)
-    for doc in wszystkie_dokumenty:
-        unikalne_term = set(doc)
-        for term in unikalne_term:
-            wystapienia_termow[term] += 1
-    return {term: math.log(liczba_dok / count) for term, count in wystapienia_termow.items()}
-
-def oblicz_tfidf(tf, idf):
-    return {slowo: tf_wartosc * idf.get(slowo, 0) for slowo, tf_wartosc in tf.items()}
+def correct_spelling(query, article_titles):
+    words = query.split()
+    corrected_words = []
+    for word in words:
+        # Znajdź najlepsze dopasowanie z artykułami
+        best_match = process.extractOne(word, article_titles)
+        if best_match and best_match[1] >= 70:  # Możesz dostosować próg
+            corrected_words.append(best_match[0])
+        else:
+            corrected_words.append(word)  # Jeśli nie znaleziono dobrego dopasowania
+    return " ".join(corrected_words)
 
 
 
+def lemmatize_text(text):
+    lemmatizer = WordNetLemmatizer()
+    words = text.split()
+    return " ".join([lemmatizer.lemmatize(word) for word in words])
 
 
 
-def train_naive_bayes_classifier(articles):
-    # Przygotowanie dokumentów (tytuł + opis) oraz kategorii
-    documents = [article.title + " " + (article.description or "") for article in articles]
+def levenshtein_similarity(str1, str2):
+    max_len = max(len(str1), len(str2))
+    if max_len == 0:
+        return 1.0
+    return 1 - (Levenshtein.distance(str1, str2) / max_len)
+
+
+
+def jaccard_similarity(str1, str2, k=3):
+    set1 = set(ngrams(str1, k))
+    set2 = set(ngrams(str2, k))
+    if not set1 or not set2:
+        return 0.0
+    return len(set1 & set2) / len(set1 | set2)
+
+
+sia = SentimentIntensityAnalyzer()
+def analyze_sentiment(text):  
     
-    # Przypisanie kategorii ręcznie lub na podstawie jakiejś logiki
-    categories = ['technology' for _ in articles]  # Przykład: wszystkie artykuły mają kategorię 'technology'
+    sentiment_score = sia.polarity_scores(text)['compound']
+
+    # Klasyfikacja
+    if sentiment_score > 0.2:
+        return "pozytywny"  # 🔹 Upewniamy się, że wartość jest w małych literach
+    elif sentiment_score < -0.2:
+        return "negatywny"
+    else:
+        return "neutralny"
     
+
+    DetectorFactory.seed = 0 
+def detect_language(text):
+    try:
+        language = detect(text)
+        return language
+    except:
+        return "Nie rozpoznano"
+
+
+
+
+def generate_wordcloud(text):
     
-    tfidf_vectorizer = TfidfVectorizer(stop_words='english')
-    X = tfidf_vectorizer.fit_transform(documents)
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, categories, test_size=0.2, random_state=42)
-    
-    nb_classifier = MultinomialNB()
-    nb_classifier.fit(X_train, y_train)
-    
-    y_pred = nb_classifier.predict(X_test)
-    
-    accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred)
-    
-    return nb_classifier, tfidf_vectorizer, accuracy, report
+    wordcloud = WordCloud(
+        width=800, 
+        height=400, 
+        background_color="white", 
+        colormap="viridis"
+    ).generate(text)
+
+    # Zapisujemy chmurę słów do pamięci jako obrazek
+    img = io.BytesIO()
+    plt.figure(figsize=(10, 5))
+    plt.imshow(wordcloud, interpolation="bilinear")
+    plt.axis("off")
+    plt.tight_layout(pad=0)
+    plt.savefig(img, format='png')
+    plt.close()
+    img.seek(0)
+    return base64.b64encode(img.getvalue()).decode()
 
 
 
 
 
 
-@app.route('/index', methods=['GET', 'POST'])
+
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
     category = request.form.get('category', 'technology')
+    selected_language = request.form.get('language', 'all')
+    selected_sentiment = request.form.get('sentiment', 'all').lower().strip()  # 🔹 Upewniamy się, że jest poprawny format
+    selected_date = request.form.get('date', '')
+
+    # Pobieranie artykułów z API
     newsapi_articles = get_articles(category)
-    openalex_articles = get_openalex_articles(category)
+    
+    # **Analiza języka i sentymentu dla artykułów z API**
+    processed_newsapi_articles = [
+        {
+            'title': article.get('title', 'No title'),
+            'description': article.get('description', 'No description available'),
+            'url': article.get('url', '#'),
+            'publishedAt': article.get('publishedAt', 'N/A'),
+            'language': detect_language(article.get('title', '') + " " + article.get('description', '')),
+            'sentiment': analyze_sentiment(article.get('title', '') + " " + article.get('description', ''))
+        }
+        for article in newsapi_articles
+    ]
 
-    # Połącz wszystkie artykuły
-    all_articles = newsapi_articles + openalex_articles
+    save_articles(newsapi_articles)  # Zapisujemy artykuły do bazy (bez języka i sentymentu)
 
-    # Zapisz w bazie danych
-    save_articles(all_articles)
-    return render_template('index.html', articles=all_articles, selected_category=category)
+    # Pobieranie artykułów z bazy
+    all_articles = Article.query.filter(Article.title.ilike(f"%{category}%")).all()
 
-@app.route('/forms', methods=['GET', 'POST'])
-def show_data():
-    articles = Article.query.all()
-    return render_template('forms.html', articles=articles)
+    # **Dynamiczna analiza języka i sentymentu dla artykułów z bazy**
+    processed_db_articles = [
+        {
+            'title': article.title,
+            'description': article.description or 'No description available',
+            'url': article.url,
+            'publishedAt': article.published_at,
+            'language': detect_language(article.title + " " + (article.description or "")),
+            'sentiment': analyze_sentiment(article.title + " " + (article.description or ""))
+        }
+        for article in all_articles
+    ]
+
+    # **Łączenie artykułów**
+    combined_articles = processed_newsapi_articles + processed_db_articles
+
+    # **Konwersja daty na obiekt datetime**
+    for article in combined_articles:
+        try:
+            article["publishedAt"] = datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            article["publishedAt"] = None  # Jeśli format jest błędny, przypisz None
+
+    # **Filtr języka**
+    if selected_language and selected_language != "all":
+        combined_articles = [article for article in combined_articles if article['language'] == selected_language]
+
+    # **🔹 Poprawiony filtr sentymentu**
+    if selected_sentiment and selected_sentiment != "all":
+        print(f"Filtrujemy po sentymencie: {selected_sentiment}")  # Testowanie
+        combined_articles = [article for article in combined_articles if article['sentiment'].lower() == selected_sentiment]
+
+    # **Filtr daty**
+    if selected_date:
+        selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d")
+        combined_articles = [article for article in combined_articles if article["publishedAt"] and article["publishedAt"].date() >= selected_date_obj.date()]
+
+    # **Sortowanie według daty publikacji**
+    combined_articles.sort(key=lambda x: x["publishedAt"] if x["publishedAt"] else datetime.min, reverse=True)
+
+    # **Testowanie, czy wartości są poprawnie przypisane**
+    for article in combined_articles[:5]:  # Sprawdź pierwsze 5 artykułów
+        print(f"Tytuł: {article['title']}")
+        print(f"Język: {article['language']}")
+        print(f"Sentiment: {article['sentiment']}")
+        print(f"Data publikacji: {article['publishedAt']}")
+        print("-" * 40)
+
+    return render_template('index.html', articles=combined_articles, selected_category=category)
+
+
+
+
+@app.route('/forms', methods=['GET'])
+def show_form():
+    return render_template('forms.html')
 
 @app.route('/search', methods=['POST'])
 def search():
-    search_query = request.form['searchWord']
+    search_query = request.form.get('searchWord', '').strip()
+    if not search_query:
+        return render_template('forms.html', articles=[], wordcloud_image=None, query_metrics=None)
 
-    
-    articles = get_articles('technology')  # Możesz zmienić kategorię
+    articles = Article.query.all()
+    article_titles = [article.title.lower() for article in articles]
 
-    
-    article_tokens = [podziel_na_tokeny((article['title'] or "") + " " + (article['description'] or "")) for article in articles]
-    query_tokens = podziel_na_tokeny(search_query)
-    lemy = wczytaj_lemy('diffs.txt')  # Załaduj lematy z pliku
+    # Poprawa literówek i lematyzacja
+    search_query = correct_spelling(search_query.lower(), article_titles)
+    search_query = lemmatize_text(search_query)
 
-    # Lematyzowanie tokenów artykułów i zapytania
-    lematyzowane_artykuly = [lematyzuj_tokeny(tokens, lemy) for tokens in article_tokens]
-    lematyzowane_zapytanie = lematyzuj_tokeny(query_tokens, lemy)
+    documents = [lemmatize_text(article.title + " " + (article.description or "")) for article in articles]
+    tfidf_vectorizer = TfidfVectorizer(stop_words='english')
+    X = tfidf_vectorizer.fit_transform(documents)
+    query_vec = tfidf_vectorizer.transform([search_query])
 
-    # Obliczanie częstotliwości tokenów dla artykułów i zapytania
-    tf_articles = [oblicz_czestotliwosc_tokenow(tokens) for tokens in lematyzowane_artykuly]
-    tf_query = oblicz_czestotliwosc_tokenow(lematyzowane_zapytanie)
-
-    
-    idf = oblicz_idf(lematyzowane_artykuly)
-    tfidf_articles = [oblicz_tfidf(tf, idf) for tf in tf_articles]
-    tfidf_query = oblicz_tfidf(tf_query, idf)
-
-    # Dopasowanie artykułów do zapytania za pomocą TF-IDF
     similarity_scores = []
-    for i, tfidf_article in enumerate(tfidf_articles):
-        # Obliczanie podobieństwa między artykułem a zapytaniem (iloczyn skalarny)
-        similarity_score = sum([tfidf_query.get(word, 0) * tfidf_article.get(word, 0) for word in tfidf_query])
-        similarity_scores.append((i, similarity_score))
+    for idx, article in enumerate(articles):
+        lev_score = levenshtein_similarity(search_query, documents[idx])
+        jaccard_score = jaccard_similarity(search_query, documents[idx])
+        tfidf_score = query_vec.dot(X[idx].T).toarray()[0][0]
+        final_score = (0.5 * tfidf_score) + (0.3 * lev_score) + (0.2 * jaccard_score)
 
-    # Sortowanie artykułów według podobieństwa (od najwyższego)
+        similarity_scores.append((idx, final_score, lev_score, jaccard_score, tfidf_score))
+
     similarity_scores.sort(key=lambda x: x[1], reverse=True)
+    top_articles = []
 
-    # Pobierz 5 najbardziej podobnych artykułów
-    top_articles = [articles[i] for i, _ in similarity_scores[:5]]
+    # Przygotowujemy tekst do chmury słów
+    wordcloud_text = ""
 
-    return render_template('search_results.html', articles=top_articles)
+    for idx, final_score, lev_score, jaccard_score, tfidf_score in similarity_scores[:5]:
+        article = articles[idx]
+        wordcloud_text += " " + article.title + " " + (article.description or "")
 
+        # Wykrywanie języka
+        article_language = detect_language(article.title + " " + (article.description or ""))
 
+        top_articles.append({
+            'title': article.title,
+            'description': article.description or 'No description available',
+            'url': article.url,
+            'publishedAt': article.published_at,
+            'sentiment': analyze_sentiment(article.title + " " + (article.description or "")),
+            'levenshtein': round(lev_score, 3),
+            'jaccard': round(jaccard_score, 3),
+            'tfidf': round(tfidf_score, 3),
+            'final_score': round(final_score, 3),
+            'language': article_language  
+        })
 
+    # Generujemy obrazek chmury słów
+    wordcloud_image = generate_wordcloud(wordcloud_text)
 
-@app.route('/searchPlus', methods=['GET', 'POST'])
-def search_plus():
-    if request.method == 'POST':
-        search_query = request.form['searchWord']  # Słowo kluczowe wprowadzone przez użytkownika
-        
-        # Pobieranie artykułów z bazy danych
-        articles = Article.query.all()
-        
-        # Przygotowanie dokumentów (tytuł + opis)
-        documents = [article.title + " " + (article.description or "") for article in articles]
-        titles = [article.title for article in articles]
-        urls = [article.url for article in articles]
-        
-        # Przekształcanie dokumentów na wektory TF-IDF
-        tfidf_vectorizer = TfidfVectorizer(stop_words='english')
-        X = tfidf_vectorizer.fit_transform(documents)
+    return render_template('forms.html', articles=top_articles, wordcloud_image=wordcloud_image, query_metrics=search_query)
 
-        # Przekształcanie zapytania użytkownika na wektor TF-IDF
-        query_vec = tfidf_vectorizer.transform([search_query])
-
-        # Używamy Nearest Neighbors, aby znaleźć najbardziej podobne artykuły
-        nn = NearestNeighbors(n_neighbors=5, metric='cosine')
-        nn.fit(X)  # Dopasowanie modelu na wszystkich artykułach
-
-        distances, indices = nn.kneighbors(query_vec) 
-
-        # Zbieramy artykuły, które są najbardziej podobne do zapytania
-        similar_articles = []
-        for idx in indices[0]:
-            similar_articles.append({
-                'title': titles[idx],
-                'url': urls[idx],
-                'description': documents[idx]
-            })
-
-        # Zakładając, że przewidujesz kategorię artykułu (np. jako zmienną)
-        predicted_category = "Science"  # Przykład, można to dynamicznie ustawić w zależności od klasyfikatora
-        accuracy = 0.85  # Przykład, można ustawić dokładność modelu
-        classification_report = "Report..."  # Zawartość raportu
-
-        return render_template('searchPlus.html', 
-                               articles=similar_articles,
-                               predicted_category=predicted_category,
-                               accuracy=accuracy,
-                               classification_report=classification_report)
-
-    return render_template('searchPlus.html', articles=[])
-
-
-
-@app.route('/bayes_classifier', methods=['GET', 'POST'])
-def bayes_classifier():
-    if request.method == 'POST':
-        search_query = request.form['searchWord']  # Słowo kluczowe wpisane przez użytkownika
-        
-        # Pobieranie artykułów z bazy danych
-        articles = Article.query.all()
-
-        # Sprawdzenie, czy model Bayesa jest wytrenowany, jeśli nie, trenujemy
-        if not hasattr(bayes_classifier, 'nb_classifier'):
-            bayes_classifier.nb_classifier, bayes_classifier.tfidf_vectorizer, bayes_classifier.accuracy, bayes_classifier.classification_report = train_naive_bayes_classifier(articles)
-        
-        # Przekształcanie dokumentów na wektory TF-IDF
-        tfidf_vectorizer = bayes_classifier.tfidf_vectorizer
-        X = tfidf_vectorizer.transform([article.title + " " + (article.description or "") for article in articles])
-
-        # Przekształcanie zapytania użytkownika na wektor TF-IDF
-        query_vec = tfidf_vectorizer.transform([search_query])
-
-        # Używamy Nearest Neighbors, aby znaleźć najbardziej podobne artykuły
-        nn = NearestNeighbors(n_neighbors=5, metric='cosine')
-        nn.fit(X)  # Dopasowanie modelu na wszystkich artykułach
-
-        distances, indices = nn.kneighbors(query_vec)  # Szukamy najbliższych sąsiadów
-
-        # Przewidywanie kategorii dla każdego znalezionego artykułu
-        similar_articles = []
-        for idx in indices[0]:
-            article_text = articles[idx].title + " " + (articles[idx].description or "")
-            article_vec = tfidf_vectorizer.transform([article_text])
-            predicted_category = bayes_classifier.nb_classifier.predict(article_vec)[0]
-
-            similar_articles.append({
-                'title': articles[idx].title,
-                'url': articles[idx].url,
-                'description': articles[idx].description,
-                'category': predicted_category  # Dodajemy kategorię
-            })
-        
-        return render_template('bayes_classifier.html', 
-                               articles=similar_articles,
-                               accuracy=bayes_classifier.accuracy,
-                               classification_report=bayes_classifier.classification_report)
-
-    return render_template('bayes_classifier.html', articles=[])
 
 
 
