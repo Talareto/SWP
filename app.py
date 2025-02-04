@@ -171,6 +171,16 @@ def generate_wordcloud(text):
     img.seek(0)
     return base64.b64encode(img.getvalue()).decode()
 
+def parse_date(date_str):
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):  # Obsługa dodatkowego formatu
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    return None  # Jeśli żaden format nie pasuje
+
+
+
 
 
 
@@ -182,79 +192,59 @@ def generate_wordcloud(text):
 def index():
     category = request.form.get('category', 'technology')
     selected_language = request.form.get('language', 'all')
-    selected_sentiment = request.form.get('sentiment', 'all').lower().strip()  # 🔹 Upewniamy się, że jest poprawny format
+    selected_sentiment = request.form.get('sentiment', 'all').lower().strip()
     selected_date = request.form.get('date', '')
 
-    # Pobieranie artykułów z API
     newsapi_articles = get_articles(category)
-    
-    # **Analiza języka i sentymentu dla artykułów z API**
+
     processed_newsapi_articles = [
         {
             'title': article.get('title', 'No title'),
             'description': article.get('description', 'No description available'),
             'url': article.get('url', '#'),
-            'publishedAt': article.get('publishedAt', 'N/A'),
+            'publishedAt': parse_date(article.get('publishedAt', 'N/A')),  # 🔹 Parsowanie daty tutaj
             'language': detect_language(article.get('title', '') + " " + article.get('description', '')),
             'sentiment': analyze_sentiment(article.get('title', '') + " " + article.get('description', ''))
         }
         for article in newsapi_articles
     ]
 
-    save_articles(newsapi_articles)  # Zapisujemy artykuły do bazy (bez języka i sentymentu)
+    save_articles(newsapi_articles)
 
-    # Pobieranie artykułów z bazy
     all_articles = Article.query.filter(Article.title.ilike(f"%{category}%")).all()
 
-    # **Dynamiczna analiza języka i sentymentu dla artykułów z bazy**
     processed_db_articles = [
         {
             'title': article.title,
             'description': article.description or 'No description available',
             'url': article.url,
-            'publishedAt': article.published_at,
+            'publishedAt': parse_date(article.published_at),  # 🔹 Parsowanie daty
             'language': detect_language(article.title + " " + (article.description or "")),
             'sentiment': analyze_sentiment(article.title + " " + (article.description or ""))
         }
         for article in all_articles
     ]
 
-    
     combined_articles = processed_newsapi_articles + processed_db_articles
 
-    
-    for article in combined_articles:
-        try:
-            article["publishedAt"] = datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
-        except ValueError:
-            article["publishedAt"] = None  # Jeśli format jest błędny, przypisz None
-
-    
-    if selected_language and selected_language != "all":
+    # ✅ Filtry daty, języka i sentymentu działają na poprawnym formacie
+    if selected_language != "all":
         combined_articles = [article for article in combined_articles if article['language'] == selected_language]
 
-    
-    if selected_sentiment and selected_sentiment != "all":
-        print(f"Filtrujemy po sentymencie: {selected_sentiment}")  # Testowanie
-        combined_articles = [article for article in combined_articles if article['sentiment'].lower() == selected_sentiment]
+    if selected_sentiment != "all":
+        combined_articles = [article for article in combined_articles if article['sentiment'] == selected_sentiment]
 
-    
     if selected_date:
-        selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d")
-        combined_articles = [article for article in combined_articles if article["publishedAt"] and article["publishedAt"].date() >= selected_date_obj.date()]
+        try:
+            selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
+            combined_articles = [article for article in combined_articles if article["publishedAt"] and article["publishedAt"].date() >= selected_date_obj]
+        except ValueError:
+            print("⚠️ Błąd w parsowaniu `selected_date`")
 
-    
     combined_articles.sort(key=lambda x: x["publishedAt"] if x["publishedAt"] else datetime.min, reverse=True)
 
-    # **Testowanie, czy wartości są poprawnie przypisane**
-    for article in combined_articles[:5]:  # Sprawdź pierwsze 5 artykułów
-        print(f"Tytuł: {article['title']}")
-        print(f"Język: {article['language']}")
-        print(f"Sentiment: {article['sentiment']}")
-        print(f"Data publikacji: {article['publishedAt']}")
-        print("-" * 40)
-
     return render_template('index.html', articles=combined_articles, selected_category=category)
+
 
 
 
