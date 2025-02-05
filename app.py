@@ -136,7 +136,7 @@ def analyze_sentiment(text):
 
     # Klasyfikacja
     if sentiment_score > 0.2:
-        return "pozytywny"  # 🔹 Upewniamy się, że wartość jest w małych literach
+        return "pozytywny"  
     elif sentiment_score < -0.2:
         return "negatywny"
     else:
@@ -202,6 +202,35 @@ def generate_word_histogram(text):
     return base64.b64encode(img.getvalue()).decode()
 
 
+def generate_language_bar_chart(articles):
+    
+    language_counts = {}
+
+    for article in articles:
+        lang = article.get('language', 'unknown')
+        language_counts[lang] = language_counts.get(lang, 0) + 1
+
+    labels = list(language_counts.keys())
+    values = list(language_counts.values())
+
+    # Tworzenie wykresu słupkowego
+    plt.figure(figsize=(10, 5))
+    plt.bar(labels, values, color='skyblue')
+    plt.xlabel("Język artykułów")
+    plt.ylabel("Liczba artykułów")
+    plt.title("Podział artykułów według języka")
+    plt.xticks(rotation=45)
+
+    # Konwersja na obrazek w base64
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    plt.close()
+    img.seek(0)
+
+    return base64.b64encode(img.getvalue()).decode()
+
+
+
 def cosine_similarity_score(vec1, vec2):
     return cosine_similarity(vec1, vec2)[0][0]
 
@@ -212,13 +241,19 @@ def cosine_similarity_score(vec1, vec2):
 def index():
     category = request.form.get('category', 'technology')
     selected_language = request.form.get('language', 'all')
-    selected_sentiment = request.form.get('sentiment', 'all').lower().strip()  # 🔹 Upewniamy się, że jest poprawny format
-    
+    selected_sentiment = request.form.get('sentiment', 'all').lower().strip()
 
-    # Pobieranie artykułów z API
-    newsapi_articles = get_articles(category)
-    
-    # **Analiza języka i sentymentu dla artykułów z API**
+    # Lista dostępnych kategorii
+    categories = ['technology', 'tesla', 'wallstreet', 'sport', 'health', 'entertainment']
+
+    # Pobieranie artykułów – jeśli "Wszystkie kategorie", pobieramy z każdej
+    if category == 'all':
+        newsapi_articles = []
+        for cat in categories:
+            newsapi_articles.extend(get_articles(cat))
+    else:
+        newsapi_articles = get_articles(category)
+
     processed_newsapi_articles = [
         {
             'title': article.get('title', 'No title'),
@@ -231,12 +266,14 @@ def index():
         for article in newsapi_articles
     ]
 
-    save_articles(newsapi_articles)  # Zapisujemy artykuły do bazy (bez języka i sentymentu)
+    # save_articles(newsapi_articles)
 
-    # Pobieranie artykułów z bazy
-    all_articles = Article.query.filter(Article.title.ilike(f"%{category}%")).all()
+    # Pobieranie artykułów z bazy – jeśli "Wszystkie kategorie", pobieramy wszystkie
+    if category == 'all':
+        all_articles = Article.query.all()
+    else:
+        all_articles = Article.query.filter(Article.title.ilike(f"%{category}%")).all()
 
-    # **Dynamiczna analiza języka i sentymentu dla artykułów z bazy**
     processed_db_articles = [
         {
             'title': article.title,
@@ -249,39 +286,31 @@ def index():
         for article in all_articles
     ]
 
-    
     combined_articles = processed_newsapi_articles + processed_db_articles
 
-    
+    # Konwersja daty publikacji na obiekt datetime
     for article in combined_articles:
         try:
             article["publishedAt"] = datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
             article["publishedAt"] = None  # Jeśli format jest błędny, przypisz None
 
-    
+    # Filtrowanie po języku
     if selected_language and selected_language != "all":
         combined_articles = [article for article in combined_articles if article['language'] == selected_language]
 
-    
+    # Filtrowanie po sentymencie
     if selected_sentiment and selected_sentiment != "all":
         print(f"Filtrujemy po sentymencie: {selected_sentiment}")  # Testowanie
         combined_articles = [article for article in combined_articles if article['sentiment'].lower() == selected_sentiment]
 
-    
-
-    
+    # Sortowanie według daty publikacji (najnowsze pierwsze)
     combined_articles.sort(key=lambda x: x["publishedAt"] if x["publishedAt"] else datetime.min, reverse=True)
 
-    # **Testowanie, czy wartości są poprawnie przypisane**
-    for article in combined_articles[:5]:  # Sprawdź pierwsze 5 artykułów
-        print(f"Tytuł: {article['title']}")
-        print(f"Język: {article['language']}")
-        print(f"Sentiment: {article['sentiment']}")
-        print(f"Data publikacji: {article['publishedAt']}")
-        print("-" * 40)
+    # Generowanie histogramu języków artykułów
+    language_bar_chart = generate_language_bar_chart(combined_articles)
 
-    return render_template('index.html', articles=combined_articles, selected_category=category)
+    return render_template('index.html', articles=combined_articles, selected_category=category, language_bar_chart=language_bar_chart)
 
 
 

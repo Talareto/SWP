@@ -5,88 +5,160 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wyniki wyszukiwania</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #444;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        form {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        form input[type="text"] {
+            padding: 10px;
+            font-size: 1rem;
+            width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        form button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: #fff;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        form button:hover {
+            background-color: #0056b3;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
+
         th, td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 10px;
             text-align: center;
         }
+
         th {
             background-color: #f4f4f4;
+            font-weight: bold;
+        }
+
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        p {
+            text-align: center;
+            font-size: 1.2rem;
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
-    <h1>Wyniki wyszukiwania</h1>
+    <div class="container">
+        <h1>Wyniki wyszukiwania</h1>
 
-    <form action="{{ url_for('search') }}" method="POST">
-        <input type="text" name="searchWord" placeholder="Wpisz zapytanie" required>
-        <button type="submit">Szukaj</button>
-    </form>
+        <form action="{{ url_for('search') }}" method="POST">
+            <input type="text" name="searchWord" placeholder="Wpisz zapytanie" required>
+            <button type="submit">Szukaj</button>
+        </form>
 
-    {% if articles %}
-        <h2>Top Artykuły:</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Tytuł</th>
-                    <th>Opis</th>
-                    <th>Data publikacji</th>
-                    <th>Język</th>
-                    <th>Levenshtein</th>
-                    <th>Jaccard</th>
-                    <th>TF-IDF</th>
-                    <th>Cosine</th> 
-                    <th>Końcowy wynik</th>
-                    <th>Sentiment</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for article in articles %}
+        {% if articles %}
+            <h2>Top Artykuły:</h2>
+            <table>
+                <thead>
                     <tr>
-                        <td><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></td>
-                        <td>{{ article.description[:100] }}...</td>
-                        <td>{{ article.publishedAt }}</td>
-                        <td>{{ article.language }}</td>
-                        <td>{{ article.levenshtein }}</td>
-                        <td>{{ article.jaccard }}</td>
-                        <td>{{ article.tfidf }}</td>
-                        <td>{{ article.cosine }}</td>
-                        <td>{{ article.final_score }}</td>
-                        <td>{{ article.sentiment }}</td>
+                        <th>Tytuł</th>
+                        <th>Opis</th>
+                        <th>Data publikacji</th>
+                        <th>Język</th>
+                        <th>Levenshtein</th>
+                        <th>Jaccard</th>
+                        <th>TF-IDF</th>
+                        <th>Cosine</th> 
+                        <th>Końcowy wynik</th>
+                        <th>Sentiment</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for article in articles %}
+                        <tr>
+                            <td><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></td>
+                            <td>{{ article.description[:100] }}...</td>
+                            <td>{{ article.publishedAt }}</td>
+                            <td>{{ article.language }}</td>
+                            <td>{{ article.levenshtein }}</td>
+                            <td>{{ article.jaccard }}</td>
+                            <td>{{ article.tfidf }}</td>
+                            <td>{{ article.cosine }}</td>
+                            <td>{{ article.final_score }}</td>
+                            <td>{{ article.sentiment }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            {% if query_metrics %}
+            <h2>Jakość wyszukiwania:</h2>
+            <table>
+                <tr>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>F1-score</th>
+                </tr>
+                <tr>
+                    <td>{{ query_metrics.Precision }}</td>
+                    <td>{{ query_metrics.Recall }}</td>
+                    <td>{{ query_metrics['F1-score'] }}</td>
+                </tr>
+            </table>
+            {% endif %}
         
-        {% if query_metrics %}
-        <h2>Jakość wyszukiwania:</h2>
-        <table border="1">
-            <tr>
-                <th>Precision</th>
-                <th>Recall</th>
-                <th>F1-score</th>
-            </tr>
-            <tr>
-                <td>{{ query_metrics.Precision }}</td>
-                <td>{{ query_metrics.Recall }}</td>
-                <td>{{ query_metrics['F1-score'] }}</td>
-            </tr>
-        </table>
-        {% endif %}
-    
-        <h2>Chmura słów:</h2>
-        <img src="data:image/png;base64,{{ wordcloud_image }}" alt="Chmura słów">
+            <h2>Chmura słów:</h2>
+            <img src="data:image/png;base64,{{ wordcloud_image }}" alt="Chmura słów">
 
-        <h2>Histogram częstotliwości słów:</h2>
-        <img src="data:image/png;base64,{{ word_histogram_image }}" alt="Histogram słów">
-    
-    {% else %}
-        <p>Brak wyników dla tego zapytania.</p>
-    {% endif %}
+            <h2>Histogram częstotliwości słów:</h2>
+            <img src="data:image/png;base64,{{ word_histogram_image }}" alt="Histogram słów">
+        
+        {% else %}
+            <p>Brak wyników dla tego zapytania.</p>
+        {% endif %}
+    </div>
 </body>
 </html>
