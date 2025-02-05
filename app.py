@@ -19,8 +19,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
 from sklearn.metrics import precision_score, recall_score, f1_score
+from collections import Counter
+import re
 
-
+nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('vader_lexicon')
 app = Flask(__name__)
@@ -173,10 +175,36 @@ def generate_wordcloud(text):
     img.seek(0)
     return base64.b64encode(img.getvalue()).decode()
 
+
+
+def generate_word_histogram(text):
+    words = re.findall(r'\b\w+\b', text.lower())  # Pobieramy słowa (ignorujemy interpunkcję)
+    stopwords = set(nltk.corpus.stopwords.words('english'))  # Możesz dodać inne języki
+    filtered_words = [word for word in words if word not in stopwords]  # Usuwamy stopwords
+
+    word_counts = Counter(filtered_words)
+    common_words = word_counts.most_common(10)  # Pobieramy 10 najczęściej występujących słów
+
+    words, counts = zip(*common_words) if common_words else ([], [])
+    
+    # Tworzenie wykresu
+    img = io.BytesIO()
+    plt.figure(figsize=(10, 5))
+    plt.bar(words, counts, color="blue")
+    plt.xlabel("Słowa")
+    plt.ylabel("Liczba wystąpień")
+    plt.xticks(rotation=45)
+    plt.title("Najczęściej występujące słowa")
+    plt.tight_layout()
+    plt.savefig(img, format='png')
+    plt.close()
+    img.seek(0)
+
+    return base64.b64encode(img.getvalue()).decode()
+
+
 def cosine_similarity_score(vec1, vec2):
     return cosine_similarity(vec1, vec2)[0][0]
-
-
 
 
 
@@ -272,7 +300,7 @@ def search():
     articles = Article.query.all()
     article_titles = [article.title.lower() for article in articles]
 
-    # 🔹 Poprawa literówek i lematyzacja
+    #  Poprawa literówek i lematyzacja
     search_query = correct_spelling(search_query.lower(), article_titles)
     search_query = lemmatize_text(search_query)
 
@@ -296,10 +324,10 @@ def search():
     similarity_scores.sort(key=lambda x: x[1], reverse=True)
     top_articles = []
 
-    # 🔹 Przygotowanie tekstu do chmury słów
+    #  Przygotowanie tekstu do chmury słów
     wordcloud_text = ""
 
-    # 🔹 Obliczanie trafności wyników
+    #
 # Znajdowanie artykułów, które częściowo pasują do zapytania
     relevant_articles = [
         article for article in articles
@@ -327,21 +355,21 @@ def search():
     recall = retrieved_relevant_count / relevant_count if relevant_count > 0 else 0
     f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
-    # 🔹 Dodano printy do debugowania
-    print(f"🔹 search_query: {search_query}")
-    print(f"🔹 retrieved_count: {retrieved_count}")
-    print(f"🔹 retrieved_relevant_count: {retrieved_relevant_count}")
-    print(f"🔹 relevant_count: {relevant_count}")
-    print(f"🔹 Precision: {precision}, Recall: {recall}, F1-score: {f1}")
+    #  Dodano printy do debugowania
+    print(f" search_query: {search_query}")
+    print(f"etrieved_count: {retrieved_count}")
+    print(f"retrieved_relevant_count: {retrieved_relevant_count}")
+    print(f"relevant_count: {relevant_count}")
+    print(f"Precision: {precision}, Recall: {recall}, F1-score: {f1}")
 
-    # 🔹 Zapisujemy wyniki do tabeli
+    #  Zapisujemy wyniki do tabeli
     query_metrics = {
         "Precision": round(precision, 3),
         "Recall": round(recall, 3),
         "F1-score": round(f1, 3)
     }
 
-    # 🔹 Tworzenie listy artykułów do wyświetlenia
+    #  Tworzenie listy artykułów do wyświetlenia
     for idx, final_score, lev_score, jaccard_score, tfidf_score, cos_score in similarity_scores[:15]:
         article = articles[idx]
         wordcloud_text += " " + article.title + " " + (article.description or "")
@@ -360,10 +388,21 @@ def search():
             'language': detect_language(article.title + " " + (article.description or ""))  
         })
 
-    # 🔹 Generujemy chmurę słów
+    #  Generujemy chmurę słów
     wordcloud_image = generate_wordcloud(wordcloud_text)
 
-    return render_template('forms.html', articles=top_articles, wordcloud_image=wordcloud_image, query_metrics=query_metrics)
+    
+    histogram_text = " ".join([article['title'] + " " + (article['description'] or "") for article in top_articles])
+
+    #  Generujemy histogram
+    word_histogram_image = generate_word_histogram(histogram_text)
+
+    return render_template('forms.html', 
+                        articles=top_articles, 
+                        wordcloud_image=wordcloud_image, 
+                        word_histogram_image=word_histogram_image, 
+                        query_metrics=query_metrics)
+
 
 
 

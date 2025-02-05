@@ -1,0 +1,14 @@
+Flask==2.2.5
+Flask-SQLAlchemy==3.0.3
+Flask-Caching==2.0.1
+requests==2.31.0
+scikit-learn==1.2.2
+numpy==1.24.3
+pandas==1.5.3
+Levenshtein==0.21.1
+nltk==3.8.1
+fuzzywuzzy==0.18.0
+langdetect==1.0.9
+wordcloud==1.8.2.2
+matplotlib==3.7.1
+datetime==5.2

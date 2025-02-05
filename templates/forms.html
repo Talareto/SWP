@@ -62,6 +62,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        
         {% if query_metrics %}
         <h2>Jakość wyszukiwania:</h2>
         <table border="1">
@@ -76,10 +77,14 @@
                 <td>{{ query_metrics['F1-score'] }}</td>
             </tr>
         </table>
-    {% endif %}
+        {% endif %}
     
         <h2>Chmura słów:</h2>
         <img src="data:image/png;base64,{{ wordcloud_image }}" alt="Chmura słów">
+
+        <h2>Histogram częstotliwości słów:</h2>
+        <img src="data:image/png;base64,{{ word_histogram_image }}" alt="Histogram słów">
+    
     {% else %}
         <p>Brak wyników dla tego zapytania.</p>
     {% endif %}
