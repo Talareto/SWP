@@ -186,7 +186,7 @@ def index():
     category = request.form.get('category', 'technology')
     selected_language = request.form.get('language', 'all')
     selected_sentiment = request.form.get('sentiment', 'all').lower().strip()  # 🔹 Upewniamy się, że jest poprawny format
-    selected_date = request.form.get('date', '')
+    
 
     # Pobieranie artykułów z API
     newsapi_articles = get_articles(category)
@@ -288,28 +288,51 @@ def search():
         tfidf_score = query_vec.dot(X[idx].T).toarray()[0][0]
         cos_score = cosine_similarity_score(query_vec, X[idx])
 
-        final_score = (0.4 * tfidf_score) + (0.2 * lev_score) + (0.2 * jaccard_score) + (0.2 * cos_score)
+        # Nowy sposób liczenia finalnego wyniku
+        final_score = (0.3 * tfidf_score) + (0.25 * lev_score) + (0.2 * jaccard_score) + (0.25 * cos_score)
         similarity_scores.append((idx, final_score, lev_score, jaccard_score, tfidf_score, cos_score))
 
+    # Sortowanie wyników według końcowego wyniku
     similarity_scores.sort(key=lambda x: x[1], reverse=True)
     top_articles = []
 
-    # 🔹 Przygotowujemy tekst do chmury słów
+    # 🔹 Przygotowanie tekstu do chmury słów
     wordcloud_text = ""
 
     # 🔹 Obliczanie trafności wyników
-    relevant_articles = [article for article in articles if search_query in article.title.lower() or search_query in (article.description or "").lower()]
+# Znajdowanie artykułów, które częściowo pasują do zapytania
+    relevant_articles = [
+        article for article in articles
+        if jaccard_similarity(search_query, article.title.lower()) > 0.2
+        or jaccard_similarity(search_query, (article.description or "").lower()) > 0.2
+    ]
+
+    # Jeśli nie znaleziono żadnych idealnych dopasowań, spróbujmy z TF-IDF
+    if not relevant_articles:
+        relevant_articles = [
+            article for article in articles 
+            if tfidf_vectorizer.transform([article.title]).dot(query_vec.T).toarray()[0][0] > 0.1
+        ]
+
     relevant_count = len(relevant_articles)  # Liczba rzeczywiście trafnych artykułów
+    retrieved_count = len(similarity_scores[:15])  # Liczba zwróconych wyników
 
-    retrieved_count = len(similarity_scores[:5])  # Liczba zwróconych wyników
     retrieved_relevant_count = sum(
-    1 for idx, _, _, _, _, _ in similarity_scores[:5] if articles[idx].title.lower() in [a.title.lower() for a in relevant_articles])
-    # Ile z nich jest trafnych?
+        1 for idx, _, _, _, _, _ in similarity_scores[:15] 
+        if any(articles[idx].title.lower() == a.title.lower() for a in relevant_articles)
+    )
 
-    # 🔹 Obliczamy Precision, Recall, F1-score
+    # Obliczamy Precision, Recall, F1-score
     precision = retrieved_relevant_count / retrieved_count if retrieved_count > 0 else 0
     recall = retrieved_relevant_count / relevant_count if relevant_count > 0 else 0
     f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+    # 🔹 Dodano printy do debugowania
+    print(f"🔹 search_query: {search_query}")
+    print(f"🔹 retrieved_count: {retrieved_count}")
+    print(f"🔹 retrieved_relevant_count: {retrieved_relevant_count}")
+    print(f"🔹 relevant_count: {relevant_count}")
+    print(f"🔹 Precision: {precision}, Recall: {recall}, F1-score: {f1}")
 
     # 🔹 Zapisujemy wyniki do tabeli
     query_metrics = {
@@ -318,6 +341,7 @@ def search():
         "F1-score": round(f1, 3)
     }
 
+    # 🔹 Tworzenie listy artykułów do wyświetlenia
     for idx, final_score, lev_score, jaccard_score, tfidf_score, cos_score in similarity_scores[:15]:
         article = articles[idx]
         wordcloud_text += " " + article.title + " " + (article.description or "")
@@ -336,10 +360,11 @@ def search():
             'language': detect_language(article.title + " " + (article.description or ""))  
         })
 
-    #  Generujemy chmurę słów
+    # 🔹 Generujemy chmurę słów
     wordcloud_image = generate_wordcloud(wordcloud_text)
 
     return render_template('forms.html', articles=top_articles, wordcloud_image=wordcloud_image, query_metrics=query_metrics)
+
 
 
 if __name__ == '__main__':
