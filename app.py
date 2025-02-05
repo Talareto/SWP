@@ -377,7 +377,7 @@ def search():
         if any(articles[idx].title.lower() == a.title.lower() for a in relevant_articles)
     )
 
-    # Obliczamy Precision, Recall, F1-score
+    
     precision = retrieved_relevant_count / retrieved_count if retrieved_count > 0 else 0
     recall = retrieved_relevant_count / relevant_count if relevant_count > 0 else 0
     f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
@@ -429,7 +429,6 @@ def search():
                         wordcloud_image=wordcloud_image, 
                         word_histogram_image=word_histogram_image, 
                         query_metrics=query_metrics)
-
 
 
 if __name__ == '__main__':
