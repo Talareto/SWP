@@ -1,56 +1,206 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News App</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            padding: 0; 
-            background-color: #f4f4f4; 
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
-        .article { 
-            border: 1px solid #ddd; 
-            margin: 10px 0; 
-            padding: 10px; 
-            background: #fff; 
-            border-radius: 5px; 
+
+        .container {
+            max-width: 900px;
+            width: 90%;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
-        .article h2 { 
-            margin: 0; 
-            font-size: 1.5em; 
+
+        h1 {
+            font-size: 2.5rem;
+            color: #343a40;
+            margin-bottom: 20px;
         }
-        .article p { 
-            margin: 0.5em 0; 
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        select, button {
+            padding: 10px;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            transition: all 0.3s ease;
+        }
+
+        button {
+            background-color: #007BFF;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .chart-container {
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container img {
+            max-width: 100%;
+            border-radius: 10px;
+        }
+
+        .articles-container {
+            margin-top: 20px;
+        }
+
+        .article {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+
+        .article h2 {
+            margin: 0 0 10px;
+            font-size: 1.5rem;
+            color: #007BFF;
+        }
+
+        .article p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        .article a {
+            color: #007BFF;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .article a:hover {
+            text-decoration: underline;
         }
     </style>
-      <script>
-        // Automatyczne odświeżanie strony co 10 sekund
-        setTimeout(() => {
-            window.location.reload();
-        }, 10000); 
-    </script>
 </head>
 <body>
-    <h1>News App</h1>
-    <form method="POST">       
-        <select name="category" onchange="this.form.submit()">            
-            <option value="technology" {% if selected_category == 'technology' %} selected {% endif %}>Technology</option>
-            <option value="tesla" {% if selected_category == 'tesla' %}selected{% endif %}>Tesla</option>
-            <option value="wallstreet" {% if selected_category == 'wallstreet' %}selected{% endif %}>Wall Street</option>
-        </select>
-    </form>
 
-    <div>
-        {% for article in articles %}
-            <div class="article">
-                <h2>{{ article.title }}</h2>
-                <p>{{ article.description }}</p>
-                <a href="{{ article.url }}" target="_blank">Read more</a>
+    <div class="container">
+        <h1>📰 News App</h1>
+
+        <!-- Formularz -->
+        <form method="POST">
+            <div class="filter-container">
+                <!-- Filtr kategorii -->
+                <div class="filter-group">
+                    <label for="category">Wybierz kategorię:</label>
+                    <select name="category" onchange="this.form.submit()">
+                        <option value="all" {% if selected_category == 'all' %} selected {% endif %}>Wszystkie kategorie</option>
+                        <option value="technology" {% if selected_category == 'technology' %} selected {% endif %}>Technologia</option>
+                        <option value="tesla" {% if selected_category == 'tesla' %} selected {% endif %}>Tesla</option>
+                        <option value="wallstreet" {% if selected_category == 'wallstreet' %} selected {% endif %}>Wall Street</option>
+                        <option value="sport" {% if selected_category == 'sport' %} selected {% endif %}>Sport</option>
+                        <option value="health" {% if selected_category == 'health' %} selected {% endif %}>Zdrowie</option>
+                        <option value="entertainment" {% if selected_category == 'entertainment' %} selected {% endif %}>Rozrywka</option>
+                    </select>
+                </div>
+
+                <!-- Filtr języka -->
+                <div class="filter-group">
+                    <label for="language">Filtruj po języku:</label>
+                    <select name="language">
+                        <option value="all">Wszystkie</option>
+                        <option value="en">Angielski</option>
+                        <option value="pl">Polski</option>
+                        <option value="fr">Francuski</option>
+                        <option value="de">Niemiecki</option>
+                        <option value="it">Włoski</option>
+                        <option value="ru">Rosyjski</option>
+                    </select>
+                </div>
+
+                <!-- Filtr sentymentu -->
+                <div class="filter-group">
+                    <label for="sentiment">Filtruj po sentymencie:</label>
+                    <select name="sentiment">
+                        <option value="all">Wszystkie</option>
+                        <option value="pozytywny">Pozytywny</option>
+                        <option value="neutralny">Neutralny</option>
+                        <option value="negatywny">Negatywny</option>
+                    </select>
+                </div>
             </div>
-        {% endfor %}
+
+            <button type="submit">🔍 Filtruj</button>
+        </form>
+
+        <!-- Wykres -->
+        <div class="chart-container">
+            <h2>📊 Podział artykułów według języka</h2>
+            <img src="data:image/png;base64,{{ language_bar_chart }}" alt="Histogram języków">
+        </div>
+
+        <!-- Lista artykułów -->
+        <div class="articles-container">
+            {% for article in articles %}
+                <div class="article">
+                    <h2>{{ article.title }}</h2>
+                    <p>{{ article.description }}</p>
+                    <p><strong>Język:</strong> {{ article.language if article.language else "Nieznany" }}</p>
+                    <p><strong>Sentiment:</strong> {{ article.sentiment if article.sentiment else "Nieznany" }}</p>
+                    <p><strong>Data publikacji:</strong> {{ article.publishedAt }}</p>
+                    <a href="{{ article.url }}" target="_blank">📖 Czytaj więcej</a>
+                </div>
+            {% endfor %}
+        </div>
     </div>
+
 </body>
 </html>
+
