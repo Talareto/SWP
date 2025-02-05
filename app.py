@@ -2,7 +2,7 @@ from flask import Flask, render_template, request
 import requests
 from flask_sqlalchemy import SQLAlchemy
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 import Levenshtein
 from nltk.util import ngrams
@@ -173,7 +173,8 @@ def generate_wordcloud(text):
     img.seek(0)
     return base64.b64encode(img.getvalue()).decode()
 
-
+def cosine_similarity_score(vec1, vec2):
+    return cosine_similarity(vec1, vec2)[0][0]
 
 
 
@@ -241,9 +242,6 @@ def index():
         combined_articles = [article for article in combined_articles if article['sentiment'].lower() == selected_sentiment]
 
     
-    if selected_date:
-        selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d")
-        combined_articles = [article for article in combined_articles if article["publishedAt"] and article["publishedAt"].date() >= selected_date_obj.date()]
 
     
     combined_articles.sort(key=lambda x: x["publishedAt"] if x["publishedAt"] else datetime.min, reverse=True)
@@ -288,9 +286,10 @@ def search():
         lev_score = levenshtein_similarity(search_query, documents[idx])
         jaccard_score = jaccard_similarity(search_query, documents[idx])
         tfidf_score = query_vec.dot(X[idx].T).toarray()[0][0]
-        final_score = (0.5 * tfidf_score) + (0.3 * lev_score) + (0.2 * jaccard_score)
+        cos_score = cosine_similarity_score(query_vec, X[idx])
 
-        similarity_scores.append((idx, final_score, lev_score, jaccard_score, tfidf_score))
+        final_score = (0.4 * tfidf_score) + (0.2 * lev_score) + (0.2 * jaccard_score) + (0.2 * cos_score)
+        similarity_scores.append((idx, final_score, lev_score, jaccard_score, tfidf_score, cos_score))
 
     similarity_scores.sort(key=lambda x: x[1], reverse=True)
     top_articles = []
@@ -303,7 +302,9 @@ def search():
     relevant_count = len(relevant_articles)  # Liczba rzeczywiście trafnych artykułów
 
     retrieved_count = len(similarity_scores[:5])  # Liczba zwróconych wyników
-    retrieved_relevant_count = sum(1 for idx, _, _, _, _ in similarity_scores[:5] if articles[idx] in relevant_articles)  # Ile z nich jest trafnych?
+    retrieved_relevant_count = sum(
+    1 for idx, _, _, _, _, _ in similarity_scores[:5] if articles[idx].title.lower() in [a.title.lower() for a in relevant_articles])
+    # Ile z nich jest trafnych?
 
     # 🔹 Obliczamy Precision, Recall, F1-score
     precision = retrieved_relevant_count / retrieved_count if retrieved_count > 0 else 0
@@ -317,7 +318,7 @@ def search():
         "F1-score": round(f1, 3)
     }
 
-    for idx, final_score, lev_score, jaccard_score, tfidf_score in similarity_scores[:15]:
+    for idx, final_score, lev_score, jaccard_score, tfidf_score, cos_score in similarity_scores[:15]:
         article = articles[idx]
         wordcloud_text += " " + article.title + " " + (article.description or "")
 
@@ -330,11 +331,12 @@ def search():
             'levenshtein': round(lev_score, 3),
             'jaccard': round(jaccard_score, 3),
             'tfidf': round(tfidf_score, 3),
+            'cosine': round(cos_score, 3),
             'final_score': round(final_score, 3),
             'language': detect_language(article.title + " " + (article.description or ""))  
         })
 
-    # 🔹 Generujemy chmurę słów
+    #  Generujemy chmurę słów
     wordcloud_image = generate_wordcloud(wordcloud_text)
 
     return render_template('forms.html', articles=top_articles, wordcloud_image=wordcloud_image, query_metrics=query_metrics)
