@@ -22,6 +22,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 from collections import Counter
 import re
 
+
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('vader_lexicon')
@@ -30,11 +31,9 @@ API_KEY = '3434439a803240cdae66cf6ba24812f9'
 
 
 
-
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///articles.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
 
 
 
@@ -327,8 +326,7 @@ def search():
     #  Przygotowanie tekstu do chmury słów
     wordcloud_text = ""
 
-    #
-# Znajdowanie artykułów, które częściowo pasują do zapytania
+    # Znajdowanie artykułów, które częściowo pasują do zapytania
     relevant_articles = [
         article for article in articles
         if jaccard_similarity(search_query, article.title.lower()) > 0.2
@@ -402,7 +400,6 @@ def search():
                         wordcloud_image=wordcloud_image, 
                         word_histogram_image=word_histogram_image, 
                         query_metrics=query_metrics)
-
 
 
 
