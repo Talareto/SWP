@@ -1,100 +1,109 @@
 # SWP
-News Search and Analysis Platform
+# News Search and Analysis Platform
+
 A Flask web application that aggregates news articles from multiple sources and provides advanced search capabilities with text analysis features.
-Features
 
-News aggregation from NewsAPI and OpenAlex
-Advanced search with multiple similarity algorithms
-Sentiment analysis and language detection
-Article filtering by category, language, and sentiment
-Search quality metrics (precision, recall, F1-score)
-Word cloud and histogram generation
+## Features
 
-Installation
-Requirements
+- News aggregation from NewsAPI and OpenAlex
+- Advanced search with multiple similarity algorithms
+- Sentiment analysis and language detection
+- Article filtering by category, language, and sentiment
+- Search quality metrics (precision, recall, F1-score)
+- Word cloud and histogram generation
 
-Python 3.8+
-NewsAPI key
+## Installation
 
-Setup
+### Requirements
+- Python 3.8+
+- NewsAPI key
 
-Clone the repository
+### Setup
 
-bashgit clone <repository-url>
+1. Clone the repository
+```bash
+git clone <repository-url>
 cd SWP
+```
 
-Install dependencies
+2. Install dependencies
+```bash
+pip install -r requirements.txt
+```
 
-bashpip install -r requirements.txt
-
-Download NLTK data
-
-pythonimport nltk
+3. Download NLTK data
+```python
+import nltk
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('vader_lexicon')
+```
 
-Configure API key in app.py
+4. Configure API key in `app.py`
+```python
+API_KEY = 'your_newsapi_key_here'
+```
 
-pythonAPI_KEY = 'your_newsapi_key_here'
+5. Run the application
+```bash
+python app.py
+```
 
-Run the application
+6. Open browser to `http://localhost:5000`
 
-bashpython app.py
+## Usage
 
-Open browser to http://localhost:5000
-
-Usage
-Main Page
+### Main Page
 Browse articles with filtering options:
+- Category selection (technology, sports, health, etc.)
+- Language filtering
+- Sentiment filtering
+- Language distribution visualization
 
-Category selection (technology, sports, health, etc.)
-Language filtering
-Sentiment filtering
-Language distribution visualization
-
-Search Page
+### Search Page
 Advanced search functionality:
+- Text search with spell correction
+- Multiple similarity scoring algorithms
+- Search quality metrics
+- Word cloud and frequency analysis
 
-Text search with spell correction
-Multiple similarity scoring algorithms
-Search quality metrics
-Word cloud and frequency analysis
+## Technical Details
 
-Technical Details
-Search Algorithms
+### Search Algorithms
+- TF-IDF vectorization
+- Cosine similarity
+- Levenshtein distance
+- Jaccard similarity with n-grams
 
-TF-IDF vectorization
-Cosine similarity
-Levenshtein distance
-Jaccard similarity with n-grams
+### Text Processing
+- Automatic spell correction
+- Text lemmatization
+- Sentiment analysis using VADER
+- Language detection
 
-Text Processing
-
-Automatic spell correction
-Text lemmatization
-Sentiment analysis using VADER
-Language detection
-
-Database
+### Database
 SQLite database storing:
+- Article title and description
+- URL and publication date
+- Processed article data
 
-Article title and description
-URL and publication date
-Processed article data
+## Dependencies
 
-Dependencies
 Core libraries:
+- Flask 2.2.5
+- Flask-SQLAlchemy 3.0.3
+- scikit-learn 1.2.2
+- nltk 3.8.1
+- requests 2.31.0
 
-Flask 2.2.5
-Flask-SQLAlchemy 3.0.3
-scikit-learn 1.2.2
-nltk 3.8.1
-requests 2.31.0
+See `requirements.txt` for complete list.
 
-See requirements.txt for complete list.
-API Endpoints
+## API Endpoints
 
-/ - Main dashboard (GET/POST)
-/forms - Search interface (GET)
-/search - Execute search (POST)
+- `/` - Main dashboard (GET/POST)
+- `/forms` - Search interface (GET)
+- `/search` - Execute search (POST)
+
+## License
+
+MIT License
